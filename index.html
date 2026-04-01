@@ -185,11 +185,11 @@
             align-items: center;
             gap: 10px;
         }
-
+/* 
         .edit-actions {
             display: flex;
             gap: 10px;
-        }
+        } */
 
         .form-title {
             color: var(--primary-pink);
@@ -707,6 +707,18 @@
             opacity: 1;
         }
 
+        .edit-actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        }
+
+        .edit-actions .btn {
+            flex: 1;
+            min-width: 120px;
+        }
+
+        /* Update the existing media query section */
         @media (max-width: 768px) {
             .form-row {
                 flex-direction: column;
@@ -771,7 +783,40 @@
                 width: 50px;
                 height: 60px;
             }
+
+            /* NEW: Fix for edit mode buttons on mobile */
+            .edit-actions {
+                flex-direction: column;
+                width: 100%;
+            }
+
+            .edit-actions .btn {
+                width: 100%;
+                margin-bottom: 10px;
+                min-width: auto;
+            }
+
+            .edit-actions .btn:last-child {
+                margin-bottom: 0;
+            }
+
+            /* Ensure edit form is responsive */
+            .edit-mode {
+                padding: 20px;
+            }
+
+            .edit-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 15px;
+            }
+
+            .edit-title {
+                width: 100%;
+                text-align: center;
+            }
         }
+        
     </style>
 </head>
 <body>
@@ -859,6 +904,7 @@
                     <div class="form-group half-width">
                         <label for="editGenre">Genre</label>
                         <select id="editGenre">
+                            <option value="">Select genre</option>
                             <option value="">Select genre</option>
                             <option value="Fiction">Fiction</option>
                             <option value="Non-Fiction">Non-Fiction</option>
