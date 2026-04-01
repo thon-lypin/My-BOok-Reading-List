@@ -56,57 +56,19 @@ header {
 }
 
 .book {
-    position: absolute;
-    background: linear-gradient(135deg, var(--primary-pink), var(--dark-pink));
-    border-radius: 5px;
-    box-shadow: 0 5px 15px rgba(255, 107, 157, 0.3);
-    transition: all 0.3s ease;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
+            position: absolute;
+            width: 60px;
+            height: 70px;
+            background: linear-gradient(135deg, var(--primary-pink), var(--dark-pink));
+            border-radius: 5px;
+            box-shadow: 0 4px 15px rgba(255, 107, 157, 0.3);
+            transform-origin: bottom center;
+        }
 
-s.book1 { 
-    width: 50px; 
-    height: 70px; 
-    transform: rotate(-10deg); 
-    z-index: 1;
-    top: 15px;
-    left: 10px;
-}
-
-.book2 { 
-    width: 55px; 
-    height: 75px; 
-    transform: rotate(0deg); 
-    z-index: 2; 
-    top: 10px;
-    left: 25px;
-}
-
-.book3 { 
-    width: 52px; 
-    height: 72px; 
-    transform: rotate(5deg); 
-    z-index: 3; 
-    top: 5px;
-    left: 20px;
-}
-
-.book4 { 
-    width: 48px; 
-    height: 68px; 
-    transform: rotate(-2deg); 
-    z-index: 4; 
-    top: 8px;
-    left: 35px;
-}
-
-/* Add hover animation */
-.books-icon:hover .book1 { transform: rotate(-15deg) translateY(-5px); }
-.books-icon:hover .book2 { transform: rotate(-5deg) translateY(-3px); }
-.books-icon:hover .book3 { transform: rotate(10deg) translateY(-4px); }
-.books-icon:hover .book4 { transform: rotate(-7deg) translateY(-2px); }
+        .book1 { transform: rotate(-5deg); z-index: 1; }
+        .book2 { transform: rotate(0deg); z-index: 2; left: 10px; }
+        .book3 { transform: rotate(5deg); z-index: 3; left: 5px; top: 5px; }
+        .book4 { transform: rotate(-2deg); z-index: 4; left: 15px; top: 10px; }
 
 h1 {
     font-size: 2.8rem;
