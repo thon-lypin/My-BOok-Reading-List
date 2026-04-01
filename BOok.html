@@ -1,0 +1,1569 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📚 My Reading Tracker</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-pink: #ff6b9d;
+            --dark-pink: #e63946;
+            --light-pink: #f8d7da;
+            --lighter-pink: #ffe0e6;
+            --background: #fff5f7;
+            --card-bg: #ffffff;
+            --text-dark: #333333;
+            --text-light: #666666;
+            --shadow: 0 8px 30px rgba(255, 107, 157, 0.15);
+            --border-radius: 20px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #fff5f7 0%, #ffe0e6 100%);
+            min-height: 100vh;
+            color: var(--text-dark);
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        .main-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 40px;
+            padding: 30px 0;
+            position: relative;
+        }
+
+        .header-title {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .book-stack-icon {
+            position: relative;
+            width: 80px;
+            height: 80px;
+            animation: float 3s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+
+        .book {
+            position: absolute;
+            width: 60px;
+            height: 70px;
+            background: linear-gradient(135deg, var(--primary-pink), var(--dark-pink));
+            border-radius: 5px;
+            box-shadow: 0 4px 15px rgba(255, 107, 157, 0.3);
+            transform-origin: bottom center;
+        }
+
+        .book1 { transform: rotate(-5deg); z-index: 1; }
+        .book2 { transform: rotate(0deg); z-index: 2; left: 10px; }
+        .book3 { transform: rotate(5deg); z-index: 3; left: 5px; top: 5px; }
+        .book4 { transform: rotate(-2deg); z-index: 4; left: 15px; top: 10px; }
+
+        h1 {
+            font-size: 2.8rem;
+            background: linear-gradient(135deg, var(--primary-pink), var(--dark-pink));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin: 0;
+            font-weight: 700;
+            text-shadow: 0 2px 10px rgba(255, 107, 157, 0.2);
+        }
+
+        .subtitle {
+            color: var(--text-light);
+            font-size: 1.2rem;
+            margin-top: 10px;
+        }
+
+        .decorative-dots {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 15px;
+        }
+
+        .dot {
+            width: 8px;
+            height: 8px;
+            background: var(--primary-pink);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        .dot:nth-child(2) { animation-delay: 0.3s; }
+        .dot:nth-child(3) { animation-delay: 0.6s; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 0.5; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 40px;
+        }
+
+        .stat-box {
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 25px;
+            text-align: center;
+            box-shadow: var(--shadow);
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .stat-box:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px rgba(255, 107, 157, 0.25);
+        }
+
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: var(--primary-pink);
+            margin-bottom: 5px;
+        }
+
+        .stat-label {
+            color: var(--text-light);
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+
+        .form-container, .edit-mode {
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 30px;
+            margin-bottom: 40px;
+            box-shadow: var(--shadow);
+        }
+
+        .edit-mode {
+            display: none;
+        }
+
+        .edit-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--lighter-pink);
+        }
+
+        .edit-title {
+            color: var(--primary-pink);
+            font-size: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .edit-actions {
+            display: flex;
+            gap: 10px;
+        }
+
+        .form-title {
+            color: var(--primary-pink);
+            font-size: 1.5rem;
+            margin-bottom: 25px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .form-row {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .form-group {
+            flex: 1;
+            min-width: 250px;
+        }
+
+        .form-group.half-width {
+            flex: 1 1 45%;
+            max-width: 45%;
+        }
+
+        .form-group.full-width {
+            flex: 1 1 100%;
+            max-width: 100%;
+        }
+
+        label {
+            display: block;
+            margin-bottom: 8px;
+            color: var(--text-dark);
+            font-weight: 500;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 12px 15px;
+            border: 2px solid var(--lighter-pink);
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: border-color 0.3s ease, box-shadow 0.3s ease;
+            background: #ffffff;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--primary-pink);
+            box-shadow: 0 0 0 3px rgba(255, 107, 157, 0.1);
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 80px;
+        }
+
+        .image-upload-container {
+            display: flex;
+            gap: 15px;
+            align-items: flex-start;
+        }
+
+        .image-preview {
+            width: 100px;
+            height: 140px;
+            border: 2px dashed var(--primary-pink);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--background);
+            overflow: hidden;
+            flex-shrink: 0;
+        }
+
+        .image-preview i {
+            font-size: 2rem;
+            color: var(--primary-pink);
+        }
+
+        .image-preview img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .image-input-group {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+
+        .image-upload-btn {
+            padding: 8px 15px;
+            background: var(--primary-pink);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background 0.3s ease;
+            align-self: flex-start;
+        }
+
+        .image-upload-btn:hover {
+            background: var(--dark-pink);
+        }
+
+        .rating-container {
+            display: flex;
+            gap: 5px;
+            margin-top: 5px;
+        }
+
+        .star {
+            font-size: 1.5rem;
+            color: #ddd;
+            cursor: pointer;
+            transition: color 0.2s ease, transform 0.2s ease;
+        }
+
+        .star:hover {
+            transform: scale(1.1);
+        }
+
+        .star.active {
+            color: #ffc107;
+        }
+
+        .btn {
+            padding: 12px 25px;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, var(--primary-pink), var(--dark-pink));
+            color: white;
+            width: 100%;
+            justify-content: center;
+            margin-top: 10px;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(255, 107, 157, 0.3);
+        }
+
+        .btn-secondary {
+            background: var(--lighter-pink);
+            color: var(--primary-pink);
+        }
+
+        .btn-secondary:hover {
+            background: var(--light-pink);
+        }
+
+        .btn-edit {
+            background: #4CAF50;
+            color: white;
+        }
+
+        .btn-edit:hover {
+            background: #45a049;
+        }
+
+        .btn-danger {
+            background: #f44336;
+            color: white;
+        }
+
+        .btn-danger:hover {
+            background: #da190b;
+        }
+
+        .books-container {
+            background: var(--card-bg);
+            border-radius: var(--border-radius);
+            padding: 30px;
+            box-shadow: var(--shadow);
+        }
+
+        .tabs {
+            display: flex;
+            margin-bottom: 30px;
+            border-bottom: 1px solid var(--lighter-pink);
+        }
+
+        .tab {
+            padding: 12px 25px;
+            background: none;
+            border: none;
+            color: var(--text-light);
+            cursor: pointer;
+            font-size: 1rem;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        .tab:hover {
+            color: var(--primary-pink);
+        }
+
+        .tab.active {
+            color: var(--primary-pink);
+        }
+
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--primary-pink);
+            border-radius: 3px 3px 0 0;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .books-title {
+            color: var(--primary-pink);
+            font-size: 1.3rem;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .books-list {
+            display: grid;
+            gap: 20px;
+        }
+
+        .book-card {
+            background: var(--background);
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 4px 15px rgba(255, 107, 157, 0.1);
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .book-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(255, 107, 157, 0.2);
+        }
+
+        .finished-badge, .reading-badge {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .finished-badge {
+            background: linear-gradient(135deg, #4CAF50, #45a049);
+            color: white;
+        }
+
+        .reading-badge {
+            background: linear-gradient(135deg, var(--primary-pink), var(--dark-pink));
+            color: white;
+        }
+
+        .book-card-main {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .book-cover {
+            width: 120px;
+            height: 170px;
+            border-radius: 10px;
+            overflow: hidden;
+            background: var(--lighter-pink);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+        }
+
+        .book-cover i {
+            font-size: 3rem;
+            color: var(--primary-pink);
+        }
+
+        .book-cover img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .book-info {
+            flex: 1;
+        }
+
+        .book-title {
+            color: var(--text-dark);
+            font-size: 1.4rem;
+            margin-bottom: 10px;
+            font-weight: 600;
+        }
+
+        .book-meta-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            margin-bottom: 15px;
+        }
+
+        .book-meta-item {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+
+        .book-meta-item i {
+            color: var(--primary-pink);
+            font-size: 0.85rem;
+        }
+
+        .book-feeling {
+            background: white;
+            padding: 12px 15px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            color: var(--text-dark);
+            font-style: italic;
+            border-left: 4px solid var(--primary-pink);
+        }
+
+        .book-feeling i {
+            color: var(--primary-pink);
+            margin-right: 8px;
+        }
+
+        .book-progress {
+            margin-bottom: 15px;
+        }
+
+        .progress-info {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 0.9rem;
+            color: var(--text-light);
+        }
+
+        .progress-bar {
+            height: 8px;
+            background: var(--lighter-pink);
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        .progress {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-pink), var(--dark-pink));
+            border-radius: 10px;
+            transition: width 0.5s ease;
+        }
+
+        .book-rating {
+            display: flex;
+            gap: 3px;
+            margin-top: 10px;
+        }
+
+        .book-actions {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            padding-top: 15px;
+            border-top: 1px solid var(--lighter-pink);
+        }
+
+        .description-section {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-top: 20px;
+            border: 1px solid var(--lighter-pink);
+        }
+
+        .description-label {
+            color: var(--primary-pink);
+            font-weight: 600;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .description-text {
+            color: var(--text-dark);
+            line-height: 1.6;
+            font-style: italic;
+        }
+
+        .finished-form-row {
+            display: flex;
+            gap: 10px;
+            align-items: flex-start;
+        }
+
+        .description-input {
+            flex: 1;
+            min-height: 80px;
+            padding: 12px 15px;
+            border: 2px solid var(--lighter-pink);
+            border-radius: 10px;
+            font-family: inherit;
+            font-size: 0.95rem;
+            resize: vertical;
+        }
+
+        .save-description-btn {
+            padding: 12px 20px;
+            background: var(--primary-pink);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: background 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .save-description-btn:hover {
+            background: var(--dark-pink);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-light);
+        }
+
+        .empty-state i {
+            font-size: 4rem;
+            color: var(--light-pink);
+            margin-bottom: 20px;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% {
+                transform: scale(1);
+                opacity: 0.7;
+            }
+            50% {
+                transform: scale(1.1);
+                opacity: 1;
+            }
+        }
+
+        .empty-state p {
+            font-size: 1.1rem;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            background: var(--dark-pink);
+            color: white;
+            padding: 15px 25px;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+            transform: translateY(100px);
+            opacity: 0;
+            transition: all 0.3s ease;
+            z-index: 1000;
+            font-weight: 500;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+            opacity: 1;
+        }
+
+        @media (max-width: 768px) {
+            .form-row {
+                flex-direction: column;
+            }
+
+            .form-group.half-width {
+                flex: 1 1 100%;
+                max-width: 100%;
+            }
+
+            .form-group {
+                min-width: 100%;
+            }
+
+            .image-upload-container {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+
+            .image-preview {
+                align-self: center;
+            }
+
+            .tabs {
+                overflow-x: auto;
+            }
+
+            .book-card-main {
+                flex-direction: column;
+                align-items: center;
+                text-align: center;
+            }
+
+            .book-cover {
+                width: 100px;
+                height: 140px;
+            }
+
+            .book-meta-row {
+                justify-content: center;
+            }
+
+            .book-actions {
+                justify-content: center;
+            }
+
+            .header-title {
+                flex-direction: column;
+                gap: 15px;
+            }
+
+            h1 {
+                font-size: 2.2rem;
+            }
+
+            .book-stack-icon {
+                width: 70px;
+                height: 70px;
+            }
+
+            .book {
+                width: 50px;
+                height: 60px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="main-content">
+        <header>
+            <div class="header-title">
+                <div class="book-stack-icon">
+                    <div class="book book1"></div>
+                    <div class="book book2"></div>
+                    <div class="book book3"></div>
+                    <div class="book book4"></div>
+                </div>
+                <h1>My Reading Tracker</h1>
+            </div>
+            <p class="subtitle">Track your reading journey with cute pink vibes!</p>
+            <div class="decorative-dots">
+                <div class="dot"></div>
+                <div class="dot"></div>
+                <div class="dot"></div>
+            </div>
+        </header>
+
+        <div class="stats-container">
+            <div class="stat-box">
+                <div class="stat-number" id="totalBooks">0</div>
+                <div class="stat-label">Total Books</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number" id="finishedBooks">0</div>
+                <div class="stat-label">Finished</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number" id="currentlyReading">0</div>
+                <div class="stat-label">Currently Reading</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number" id="avgRating">0</div>
+                <div class="stat-label">Avg Rating</div>
+            </div>
+        </div>
+
+        <!-- Edit Mode Container (Hidden by default) -->
+        <div class="edit-mode" id="editMode" style="display: none;">
+            <div class="edit-header">
+                <h2 class="edit-title"><i class="fas fa-edit"></i> Edit Book</h2>
+                <div class="edit-actions">
+                    <button class="btn btn-secondary" onclick="cancelEdit()">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                    <button class="btn btn-primary" onclick="saveEdit()" style="width: auto;">
+                        <i class="fas fa-save"></i> Save Changes
+                    </button>
+                </div>
+            </div>
+            <form id="editForm">
+                <!-- First Row: Book Cover and Basic Info -->
+                <div class="form-row">
+                    <div class="form-group half-width">
+                        <label for="editBookCover">Book Cover</label>
+                        <div class="image-upload-container">
+                            <div class="image-preview" id="editImagePreview">
+                                <i class="fas fa-book"></i>
+                            </div>
+                            <div class="image-input-group">
+                                <input type="text" id="editBookCover" placeholder="Enter image URL or upload">
+                                <button type="button" class="image-upload-btn" onclick="document.getElementById('editFileInput').click()">
+                                    <i class="fas fa-upload"></i> Upload Image
+                                </button>
+                                <input type="file" id="editFileInput" accept="image/*" style="display: none;" onchange="handleEditFileUpload(event)">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group half-width">
+                        <label for="editBookName">Book Name</label>
+                        <input type="text" id="editBookName" placeholder="Enter book name" required>
+                    </div>
+                </div>
+
+                <!-- Second Row: Author and Genre -->
+                <div class="form-row">
+                    <div class="form-group half-width">
+                        <label for="editAuthor">Author</label>
+                        <input type="text" id="editAuthor" placeholder="Enter author name">
+                    </div>
+                    <div class="form-group half-width">
+                        <label for="editGenre">Genre</label>
+                        <select id="editGenre">
+                            <option value="">Select genre</option>
+                            <option value="Fiction">Fiction</option>
+                            <option value="Non-Fiction">Non-Fiction</option>
+                            <option value="Mystery">Mystery</option>
+                            <option value="Romance">Romance</option>
+                            <option value="Sci-Fi">Sci-Fi</option>
+                            <option value="Fantasy">Fantasy</option>
+                            <option value="Biography">Biography</option>
+                            <option value="Self-Help">Self-Help</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Third Row: Dates -->
+                <div class="form-row">
+                    <div class="form-group half-width">
+                        <label for="editStartDate">Start Date</label>
+                        <input type="date" id="editStartDate">
+                    </div>
+                    <div class="form-group half-width">
+                        <label for="editEndDate">End Date</label>
+                        <input type="date" id="editEndDate">
+                    </div>
+                </div>
+
+                <!-- Fourth Row: Progress and Rating -->
+                <div class="form-row">
+                    <div class="form-group half-width">
+                        <label for="editProgress">Reading Progress (%)</label>
+                        <input type="number" id="editProgress" min="0" max="100" placeholder="0-100">
+                    </div>
+                    <div class="form-group half-width">
+                        <label>Rating</label>
+                        <div class="rating-container" id="editRatingContainer">
+                            <span class="star" data-rating="1"><i class="fas fa-star"></i></span>
+                            <span class="star" data-rating="2"><i class="fas fa-star"></i></span>
+                            <span class="star" data-rating="3"><i class="fas fa-star"></i></span>
+                            <span class="star" data-rating="4"><i class="fas fa-star"></i></span>
+                            <span class="star" data-rating="5"><i class="fas fa-star"></i></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fifth Row: Feelings (Full Width) -->
+                <div class="form-row">
+                    <div class="form-group full-width">
+                        <label for="editFeeling">How do you feel while reading?</label>
+                        <textarea id="editFeeling" placeholder="Share your thoughts..."></textarea>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <div class="form-container">
+            <h2 class="form-title"><i class="fas fa-book-medical"></i> Add New Book</h2>
+            <form id="bookForm">
+                <!-- First Row: Book Cover and Basic Info -->
+                <div class="form-row">
+                    <div class="form-group half-width">
+                        <label for="bookCover">Book Cover</label>
+                        <div class="image-upload-container">
+                            <div class="image-preview" id="imagePreview">
+                                <i class="fas fa-book"></i>
+                            </div>
+                            <div class="image-input-group">
+                                <input type="text" id="bookCover" placeholder="Enter image URL or upload">
+                                <button type="button" class="image-upload-btn" onclick="document.getElementById('fileInput').click()">
+                                    <i class="fas fa-upload"></i> Upload Image
+                                </button>
+                                <input type="file" id="fileInput" accept="image/*" style="display: none;" onchange="handleFileUpload(event)">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="form-group half-width">
+                        <label for="bookName">Book Name</label>
+                        <input type="text" id="bookName" placeholder="Enter book name" required>
+                    </div>
+                </div>
+
+                <!-- Second Row: Author and Genre -->
+                <div class="form-row">
+                    <div class="form-group half-width">
+                        <label for="author">Author</label>
+                        <input type="text" id="author" placeholder="Enter author name">
+                    </div>
+                    <div class="form-group half-width">
+                        <label for="genre">Genre</label>
+                        <select id="genre">
+                            <option value="Fiction">Fiction</option>
+                            <option value="Mystery">Mystery</option>
+                            <option value="Romance">Romance</option>
+                            <option value="Fantasy">Fantasy</option>
+                            <option value="Biography">Dark Romance</option>
+                            <option value="Self-Help">Boylove</option>
+                            <option value="Other">Other</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Third Row: Dates -->
+                <div class="form-row">
+                    <div class="form-group half-width">
+                        <label for="startDate">Start Date</label>
+                        <input type="date" id="startDate">
+                    </div>
+                    <div class="form-group half-width">
+                        <label for="endDate">End Date</label>
+                        <input type="date" id="endDate">
+                    </div>
+                </div>
+
+                <!-- Fourth Row: Progress and Rating -->
+                <div class="form-row">
+                    <div class="form-group half-width">
+                        <label for="progress">Reading Progress (%)</label>
+                        <input type="number" id="progress" min="0" max="100" placeholder="0-100">
+                    </div>
+                    <div class="form-group half-width">
+                        <label>Rating</label>
+                        <div class="rating-container" id="ratingContainer">
+                            <span class="star" data-rating="1"><i class="fas fa-star"></i></span>
+                            <span class="star" data-rating="2"><i class="fas fa-star"></i></span>
+                            <span class="star" data-rating="3"><i class="fas fa-star"></i></span>
+                            <span class="star" data-rating="4"><i class="fas fa-star"></i></span>
+                            <span class="star" data-rating="5"><i class="fas fa-star"></i></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Fifth Row: Feelings (Full Width) -->
+                <div class="form-row">
+                    <div class="form-group full-width">
+                        <label for="feeling">How do you feel while reading?</label>
+                        <textarea id="feeling" placeholder="Share your thoughts..."></textarea>
+                    </div>
+                </div>
+
+                <!-- Submit Button -->
+                <button type="submit" class="btn btn-primary">
+                    <i class="fas fa-plus-circle"></i> Add Book
+                </button>
+            </form>
+        </div>
+
+        <div class="books-container">
+            <div class="tabs">
+                <button class="tab active" data-tab="all">All Books</button>
+                <button class="tab" data-tab="reading">Currently Reading</button>
+                <button class="tab" data-tab="finished">Finished Books</button>
+            </div>
+
+            <div class="tab-content active" id="all">
+                <div class="books-list" id="allBooksList">
+                    <div class="empty-state">
+                        <i class="fas fa-book-reader"></i>
+                        <p>No books added yet. Start tracking your reading journey!</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="reading">
+                <h3 class="books-title"><i class="fas fa-book-open"></i> Books I'm Currently Reading</h3>
+                <div class="books-list" id="readingBooksList">
+                    <div class="empty-state">
+                        <i class="fas fa-book"></i>
+                        <p>No books currently being read. Add a new book to get started!</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="tab-content" id="finished">
+                <h3 class="books-title"><i class="fas fa-trophy"></i> Books I've Finished</h3>
+                <div class="books-list" id="finishedBooksList">
+                    <div class="empty-state">
+                        <i class="fas fa-award"></i>
+                        <p>No finished books yet. Keep reading!</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // Initialize books array from localStorage or empty array
+        let books = JSON.parse(localStorage.getItem("books")) || [];
+        let currentTab = "all";
+        let selectedRating = 0;
+        let editSelectedRating = 0;
+        let currentImageUrl = "";
+        let editCurrentImageUrl = "";
+        let editingBookId = null;
+
+        // DOM elements
+        const bookForm = document.getElementById("bookForm");
+        const editForm = document.getElementById("editForm");
+        const allBooksList = document.getElementById("allBooksList");
+        const readingBooksList = document.getElementById("readingBooksList");
+        const finishedBooksList = document.getElementById("finishedBooksList");
+        const toast = document.getElementById("toast");
+        const ratingStars = document.querySelectorAll("#ratingContainer .star");
+        const editRatingStars = document.querySelectorAll("#editRatingContainer .star");
+        const tabs = document.querySelectorAll(".tab");
+        const tabContents = document.querySelectorAll(".tab-content");
+        const bookCoverInput = document.getElementById("bookCover");
+        const editBookCoverInput = document.getElementById("editBookCover");
+        const imagePreview = document.getElementById("imagePreview");
+        const editImagePreview = document.getElementById("editImagePreview");
+        const editMode = document.getElementById("editMode");
+
+        // Initialize
+        document.addEventListener("DOMContentLoaded", () => {
+            renderBooks();
+            updateStats();
+            setupEventListeners();
+        });
+
+        // Setup event listeners
+        function setupEventListeners() {
+            // Form submission
+            bookForm.addEventListener("submit", (e) => {
+                e.preventDefault();
+                addBook();
+            });
+
+            // Edit form submission
+            editForm.addEventListener("submit", (e) => {
+                e.preventDefault();
+                saveEdit();
+            });
+
+            // Rating stars
+            ratingStars.forEach(star => {
+                star.addEventListener("click", () => {
+                    selectedRating = parseInt(star.dataset.rating);
+                    updateRatingDisplay();
+                });
+            });
+
+            // Edit rating stars
+            editRatingStars.forEach(star => {
+                star.addEventListener("click", () => {
+                    editSelectedRating = parseInt(star.dataset.rating);
+                    updateEditRatingDisplay();
+                });
+            });
+
+            // Tabs
+            tabs.forEach(tab => {
+                tab.addEventListener("click", () => {
+                    const tabName = tab.dataset.tab;
+                    switchTab(tabName);
+                });
+            });
+
+            // Book cover URL input
+            bookCoverInput.addEventListener("input", (e) => {
+                const url = e.target.value;
+                if (url) {
+                    updateImagePreview(url);
+                } else {
+                    resetImagePreview();
+                }
+            });
+
+            // Edit book cover URL input
+            editBookCoverInput.addEventListener("input", (e) => {
+                const url = e.target.value;
+                if (url) {
+                    updateEditImagePreview(url);
+                } else {
+                    resetEditImagePreview();
+                }
+            });
+        }
+
+        // Handle file upload
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    currentImageUrl = e.target.result;
+                    bookCoverInput.value = "Uploaded Image";
+                    updateImagePreview(currentImageUrl);
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // Handle edit file upload
+        function handleEditFileUpload(event) {
+            const file = event.target.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    editCurrentImageUrl = e.target.result;
+                    editBookCoverInput.value = "Uploaded Image";
+                    updateEditImagePreview(editCurrentImageUrl);
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // Update image preview
+        function updateImagePreview(url) {
+            imagePreview.innerHTML = `<img src="${url}" alt="Book Cover" onerror="this.onerror=null; this.parentElement.innerHTML='<i class=\\'fas fa-book\\'></i>';">`;
+        }
+
+        // Update edit image preview
+        function updateEditImagePreview(url) {
+            editImagePreview.innerHTML = `<img src="${url}" alt="Book Cover" onerror="this.onerror=null; this.parentElement.innerHTML='<i class=\\'fas fa-book\\'></i>';">`;
+        }
+
+        // Reset image preview
+        function resetImagePreview() {
+            imagePreview.innerHTML = '<i class="fas fa-book"></i>';
+            currentImageUrl = "";
+        }
+
+        // Reset edit image preview
+        function resetEditImagePreview() {
+            editImagePreview.innerHTML = '<i class="fas fa-book"></i>';
+            editCurrentImageUrl = "";
+        }
+
+        // Switch tabs
+        function switchTab(tabName) {
+            tabs.forEach(t => t.classList.remove("active"));
+            tabContents.forEach(tc => tc.classList.remove("active"));
+            
+            document.querySelector(`[data-tab="${tabName}"]`).classList.add("active");
+            document.getElementById(tabName).classList.add("active");
+            currentTab = tabName;
+        }
+
+        // Update rating display
+        function updateRatingDisplay() {
+            ratingStars.forEach((star, index) => {
+                if (index < selectedRating) {
+                    star.classList.add("active");
+                } else {
+                    star.classList.remove("active");
+                }
+            });
+        }
+
+        // Update edit rating display
+        function updateEditRatingDisplay() {
+            editRatingStars.forEach((star, index) => {
+                if (index < editSelectedRating) {
+                    star.classList.add("active");
+                } else {
+                    star.classList.remove("active");
+                }
+            });
+        }
+
+        // Add new book
+        function addBook() {
+            const name = document.getElementById("bookName").value;
+            const author = document.getElementById("author").value;
+            const feeling = document.getElementById("feeling").value;
+            const start = document.getElementById("startDate").value;
+            const end = document.getElementById("endDate").value;
+            const genre = document.getElementById("genre").value;
+            const progress = document.getElementById("progress").value || 0;
+            const coverUrl = currentImageUrl || bookCoverInput.value;
+
+            if (name === "") {
+                showToast("Please enter a book name", "error");
+                return;
+            }
+
+            const book = {
+                id: Date.now(),
+                name,
+                author,
+                feeling,
+                start,
+                end,
+                genre,
+                progress: parseInt(progress),
+                rating: selectedRating,
+                finished: end !== "" || progress === 100,
+                description: "",
+                cover: coverUrl
+            };
+
+            books.push(book);
+            saveBooks();
+            renderBooks();
+            updateStats();
+            bookForm.reset();
+            selectedRating = 0;
+            updateRatingDisplay();
+            resetImagePreview();
+            showToast("Book added successfully!", "success");
+        }
+
+        // Edit book
+        function editBook(id) {
+            const book = books.find(b => b.id === id);
+            if (!book) return;
+
+            editingBookId = id;
+            
+            // Populate edit form
+            document.getElementById("editBookName").value = book.name;
+            document.getElementById("editAuthor").value = book.author || "";
+            document.getElementById("editGenre").value = book.genre || "";
+            document.getElementById("editStartDate").value = book.start || "";
+            document.getElementById("editEndDate").value = book.end || "";
+            document.getElementById("editProgress").value = book.progress || 0;
+            document.getElementById("editFeeling").value = book.feeling || "";
+            document.getElementById("editBookCover").value = book.cover || "";
+            
+            // Set rating
+            editSelectedRating = book.rating || 0;
+            updateEditRatingDisplay();
+            
+            // Set image
+            if (book.cover) {
+                updateEditImagePreview(book.cover);
+                editCurrentImageUrl = book.cover;
+            } else {
+                resetEditImagePreview();
+            }
+            
+            // Show edit mode
+            editMode.style.display = "block";
+            document.querySelector(".form-container").style.display = "none";
+            
+            // Scroll to edit form
+            editMode.scrollIntoView({ behavior: "smooth" });
+        }
+
+        // Save edit
+        function saveEdit() {
+            const bookIndex = books.findIndex(b => b.id === editingBookId);
+            if (bookIndex === -1) return;
+
+            const name = document.getElementById("editBookName").value;
+            if (name === "") {
+                showToast("Please enter a book name", "error");
+                return;
+            }
+
+            // Update book data
+            books[bookIndex] = {
+                ...books[bookIndex],
+                name,
+                author: document.getElementById("editAuthor").value,
+                genre: document.getElementById("editGenre").value,
+                start: document.getElementById("editStartDate").value,
+                end: document.getElementById("editEndDate").value,
+                progress: parseInt(document.getElementById("editProgress").value) || 0,
+                feeling: document.getElementById("editFeeling").value,
+                rating: editSelectedRating,
+                cover: editCurrentImageUrl || document.getElementById("editBookCover").value,
+                finished: document.getElementById("editEndDate").value !== "" || 
+                         (document.getElementById("editProgress").value || 0) === 100
+            };
+
+            saveBooks();
+            renderBooks();
+            updateStats();
+            cancelEdit();
+            showToast("Book updated successfully!", "success");
+        }
+
+        // Cancel edit
+        function cancelEdit() {
+            editMode.style.display = "none";
+            document.querySelector(".form-container").style.display = "block";
+            editingBookId = null;
+            editSelectedRating = 0;
+            updateEditRatingDisplay();
+            editForm.reset();
+        }
+
+        // Render books list
+        function renderBooks() {
+            const allBooks = books;
+            const readingBooks = books.filter(book => !book.finished);
+            const finishedBooks = books.filter(book => book.finished);
+
+            // Render all books
+            renderBookList(allBooksList, allBooks, "all");
+            
+            // Render currently reading books
+            renderBookList(readingBooksList, readingBooks, "reading");
+            
+            // Render finished books
+            renderBookList(finishedBooksList, finishedBooks, "finished");
+        }
+
+        // Render individual book list
+        function renderBookList(container, bookList, type) {
+            if (bookList.length === 0) {
+                let emptyMessage = "";
+                let emptyIcon = "";
+                
+                if (type === "all") {
+                    emptyMessage = "No books added yet. Start tracking your reading journey!";
+                    emptyIcon = "fa-book-reader";
+                } else if (type === "reading") {
+                    emptyMessage = "No books currently being read. Add a new book to get started!";
+                    emptyIcon = "fa-book";
+                } else if (type === "finished") {
+                    emptyMessage = "No finished books yet. Keep reading!";
+                    emptyIcon = "fa-award";
+                }
+                
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <i class="fas ${emptyIcon}"></i>
+                        <p>${emptyMessage}</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = bookList.map(book => `
+                <div class="book-card">
+                    ${book.finished ? '<div class="finished-badge">Finished</div>' : '<div class="reading-badge">Reading</div>'}
+                    
+                    <!-- Main horizontal layout -->
+                    <div class="book-card-main">
+                        <div class="book-cover">
+                            ${book.cover ? 
+                                `<img src="${book.cover}" alt="${book.name}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+                                 <i class="fas fa-book" style="display:none;"></i>` :
+                                `<i class="fas fa-book"></i>`
+                            }
+                        </div>
+                        <div class="book-info">
+                            <h3 class="book-title">${book.name}</h3>
+                            
+                            <!-- Horizontal row for metadata -->
+                            <div class="book-meta-row">
+                                ${book.author ? `<div class="book-meta-item"><i class="fas fa-user-pen"></i> ${book.author}</div>` : ''}
+                                ${book.genre ? `<div class="book-meta-item"><i class="fas fa-tag"></i> ${book.genre}</div>` : ''}
+                                ${book.start ? `<div class="book-meta-item"><i class="fas fa-calendar-day"></i> ${formatDate(book.start)}</div>` : ''}
+                                ${book.end ? `<div class="book-meta-item"><i class="fas fa-calendar-check"></i> ${formatDate(book.end)}</div>` : ''}
+                            </div>
+                            
+                            ${book.feeling ? `<div class="book-feeling"><i class="fas fa-heart"></i> ${book.feeling}</div>` : ''}
+                            
+                            ${book.progress > 0 && !book.finished ? `
+                                <div class="book-progress">
+                                    <div class="progress-info">
+                                        <span>Progress</span>
+                                        <span>${book.progress}%</span>
+                                    </div>
+                                    <div class="progress-bar">
+                                        <div class="progress" style="width: ${book.progress}%"></div>
+                                    </div>
+                                </div>
+                            ` : ''}
+                            
+                            ${book.rating > 0 ? `
+                                <div class="book-rating">
+                                    ${generateStars(book.rating)}
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                    
+                    ${book.finished ? `
+                        <div class="description-section">
+                            <div class="description-label">
+                                <i class="fas fa-pen-fancy"></i> Final Thoughts
+                            </div>
+                            ${book.description ? `
+                                <div class="description-text">${book.description}</div>
+                            ` : `
+                                <div class="finished-form-row">
+                                    <textarea class="description-input" id="desc-${book.id}" placeholder="Share your final thoughts about this book..."></textarea>
+                                    <button class="save-description-btn" onclick="saveDescription(${book.id})">
+                                        <i class="fas fa-save"></i> Save
+                                    </button>
+                                </div>
+                            `}
+                        </div>
+                    ` : ''}
+                    
+                    <!-- Horizontal row for action buttons -->
+                    <div class="book-actions">
+                        <button class="btn btn-edit" onclick="editBook(${book.id})">
+                            <i class="fas fa-edit"></i> Edit
+                        </button>
+                        ${!book.finished ? `<button class="btn btn-secondary" onclick="markAsFinished(${book.id})"><i class="fas fa-check"></i> Mark Finished</button>` : ''}
+                        <button class="btn btn-danger" onclick="deleteBook(${book.id})"><i class="fas fa-trash"></i> Delete</button>
+                    </div>
+                </div>
+            `).join("");
+        }
+
+        // Generate star rating HTML
+        function generateStars(rating) {
+            let stars = "";
+            for (let i = 1; i <= 5; i++) {
+                if (i <= rating) {
+                    stars += '<i class="fas fa-star" style="color: #ffc107;"></i>';
+                } else {
+                    stars += '<i class="far fa-star" style="color: #ddd;"></i>';
+                }
+            }
+            return stars;
+        }
+
+        // Save description for finished book
+        function saveDescription(bookId) {
+            const descriptionInput = document.getElementById(`desc-${bookId}`);
+            const description = descriptionInput.value.trim();
+            
+            if (description === "") {
+                showToast("Please enter a description", "error");
+                return;
+            }
+            
+            const bookIndex = books.findIndex(book => book.id === bookId);
+            if (bookIndex !== -1) {
+                books[bookIndex].description = description;
+                saveBooks();
+                renderBooks();
+                showToast("Description saved successfully!", "success");
+            }
+        }
+
+        // Mark book as finished
+        function markAsFinished(id) {
+            const bookIndex = books.findIndex(book => book.id === id);
+            if (bookIndex !== -1) {
+                books[bookIndex].finished = true;
+                books[bookIndex].end = new Date().toISOString().split('T')[0];
+                books[bookIndex].progress = 100;
+                saveBooks();
+                renderBooks();
+                updateStats();
+                showToast("Book marked as finished! Add your final thoughts below.", "success");
+            }
+        }
+
+        // Delete book
+        function deleteBook(id) {
+            if (confirm("Are you sure you want to delete this book?")) {
+                books = books.filter(book => book.id !== id);
+                saveBooks();
+                renderBooks();
+                updateStats();
+                showToast("Book deleted successfully!", "success");
+            }
+        }
+
+        // Update statistics
+        function updateStats() {
+            const totalBooks = books.length;
+            const finishedBooks = books.filter(book => book.finished).length;
+            const currentlyReading = totalBooks - finishedBooks;
+            
+            let avgRating = 0;
+            if (books.length > 0) {
+                const ratedBooks = books.filter(book => book.rating > 0);
+                if (ratedBooks.length > 0) {
+                    const sumRating = ratedBooks.reduce((sum, book) => sum + book.rating, 0);
+                    avgRating = (sumRating / ratedBooks.length).toFixed(1);
+                }
+            }
+
+            document.getElementById("totalBooks").textContent = totalBooks;
+            document.getElementById("finishedBooks").textContent = finishedBooks;
+            document.getElementById("currentlyReading").textContent = currentlyReading;
+            document.getElementById("avgRating").textContent = avgRating;
+        }
+
+        // Save books to localStorage
+        function saveBooks() {
+            localStorage.setItem("books", JSON.stringify(books));
+        }
+
+        // Format date
+        function formatDate(dateString) {
+            const options = { month: 'short', day: 'numeric', year: 'numeric' };
+            return new Date(dateString).toLocaleDateString(undefined, options);
+        }
+
+        // Show toast notification
+        function showToast(message, type = "info") {
+            toast.textContent = message;
+            toast.className = "toast show";
+            
+            if (type === "error") {
+                toast.style.background = "#ff6b6b";
+            } else {
+                toast.style.background = "var(--dark-pink)";
+            }
+            
+            setTimeout(() => {
+                toast.className = "toast";
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
