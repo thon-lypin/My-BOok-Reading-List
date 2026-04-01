@@ -17,6 +17,7 @@
             --text-light: #666666;
             --border-radius: 20px;
             --shadow: 0 8px 25px rgba(255, 107, 157, 0.1);
+            --description-bg: linear-gradient(135deg, #fff5f8 0%, #ffe0ec 100%);
         }
 
         * {
@@ -428,13 +429,13 @@
         .books-list {
             display: flex;
             flex-direction: column;
-            gap: 25px;
+            gap: 30px;
         }
 
         .book-card {
             background: white;
             border-radius: 20px;
-            padding: 25px;
+            padding: 30px;
             box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
             transition: all 0.3s ease;
             position: relative;
@@ -478,7 +479,7 @@
         .book-card-main {
             display: flex;
             gap: 20px;
-            margin-bottom: 20px;
+            margin-bottom: 25px;
             position: relative;
             z-index: 1;
         }
@@ -605,14 +606,23 @@
             justify-content: center;
         }
 
+        /* Enhanced Description Section with More Weight */
         .description-section {
-            margin-top: 20px;
-            padding: 20px;
-            background: linear-gradient(135deg, #fff5f8 0%, #ffe0ec 100%);
-            border-radius: 15px;
-            border: 2px solid rgba(255, 182, 193, 0.3);
+            margin-top: 30px;
+            padding: 30px;
+            background: var(--description-bg);
+            border-radius: 18px;
+            border: 3px solid rgba(255, 182, 193, 0.4);
             position: relative;
             overflow: hidden;
+            box-shadow: 0 10px 30px rgba(255, 107, 157, 0.15);
+            transition: all 0.3s ease;
+        }
+
+        .description-section:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 40px rgba(255, 107, 157, 0.2);
+            border-color: rgba(255, 182, 193, 0.6);
         }
 
         .description-section::before {
@@ -621,59 +631,92 @@
             top: 0;
             left: 0;
             right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, var(--dark-pink), var(--light-pink));
+            height: 5px;
+            background: linear-gradient(90deg, var(--dark-pink), var(--light-pink), var(--dark-pink));
+            background-size: 200% 100%;
+            animation: shimmer 3s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
         }
 
         .description-label {
             display: flex;
             align-items: center;
-            gap: 8px;
-            font-weight: 600;
+            gap: 10px;
+            font-weight: 700;
             color: var(--dark-pink);
-            margin-bottom: 15px;
-            font-size: 16px;
+            margin-bottom: 20px;
+            font-size: 18px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
         .description-label i {
-            font-size: 18px;
+            font-size: 22px;
+            animation: pulse 2s infinite;
         }
 
         .description-text {
             background: white;
-            padding: 15px;
-            border-radius: 10px;
-            border-left: 4px solid var(--dark-pink);
+            padding: 25px;
+            border-radius: 15px;
+            border-left: 5px solid var(--dark-pink);
             font-style: italic;
-            color: #555;
-            line-height: 1.6;
-            font-size: 15px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+            color: #444;
+            line-height: 1.8;
+            font-size: 16px;
+            box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+            position: relative;
+            min-height: 80px;
+        }
+
+        .description-text::before {
+            content: '"';
+            position: absolute;
+            top: 10px;
+            left: 15px;
+            font-size: 40px;
+            color: rgba(233, 30, 99, 0.1);
+            font-family: Georgia, serif;
+        }
+
+        .description-text::after {
+            content: '"';
+            position: absolute;
+            bottom: -10px;
+            right: 15px;
+            font-size: 40px;
+            color: rgba(233, 30, 99, 0.1);
+            font-family: Georgia, serif;
         }
 
         .finished-form-row {
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 15px;
         }
 
         .description-input {
             width: 100%;
-            min-height: 100px;
-            padding: 15px;
-            border: 2px solid rgba(255, 182, 193, 0.3);
-            border-radius: 10px;
+            min-height: 120px;
+            padding: 20px;
+            border: 3px solid rgba(255, 182, 193, 0.4);
+            border-radius: 15px;
             font-family: 'Poppins', sans-serif;
-            font-size: 14px;
+            font-size: 16px;
             resize: vertical;
             transition: all 0.3s ease;
             background: white;
+            box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.05);
         }
 
         .description-input:focus {
             outline: none;
             border-color: var(--dark-pink);
-            box-shadow: 0 0 0 3px rgba(233, 30, 99, 0.1);
+            box-shadow: 0 0 0 4px rgba(233, 30, 99, 0.15), inset 0 2px 10px rgba(0, 0, 0, 0.05);
         }
 
         .save-description-btn {
@@ -681,17 +724,20 @@
             background: linear-gradient(135deg, var(--dark-pink), var(--light-pink));
             color: white;
             border: none;
-            padding: 10px 20px;
-            border-radius: 25px;
+            padding: 12px 25px;
+            border-radius: 30px;
             font-weight: 600;
             cursor: pointer;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(233, 30, 99, 0.3);
+            box-shadow: 0 6px 20px rgba(233, 30, 99, 0.3);
+            font-size: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
 
         .save-description-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(233, 30, 99, 0.4);
+            transform: translateY(-3px);
+            box-shadow: 0 8px 25px rgba(233, 30, 99, 0.4);
         }
 
         .empty-state {
@@ -843,30 +889,47 @@
                 padding: 5px 10px;
             }
             
+            /* Enhanced mobile description section */
             .description-section {
-                margin-top: 15px;
-                padding: 15px;
+                margin-top: 25px;
+                padding: 25px;
+                border-width: 2px;
             }
             
             .description-label {
-                font-size: 15px;
-                margin-bottom: 12px;
+                font-size: 16px;
+                margin-bottom: 15px;
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .description-label i {
+                font-size: 20px;
+                margin-bottom: 5px;
             }
             
             .description-text {
-                padding: 12px;
-                font-size: 14px;
+                padding: 20px;
+                font-size: 15px;
+                line-height: 1.7;
+            }
+            
+            .description-text::before,
+            .description-text::after {
+                font-size: 30px;
             }
             
             .description-input {
-                min-height: 90px;
-                padding: 12px;
-                font-size: 14px;
+                min-height: 100px;
+                padding: 15px;
+                font-size: 15px;
+                border-width: 2px;
             }
             
             .save-description-btn {
-                padding: 8px 16px;
+                padding: 10px 20px;
                 font-size: 14px;
+                width: 100%;
             }
             
             .book-feeling {
@@ -957,29 +1020,35 @@
                 font-size: 12px;
             }
             
+            /* Very small mobile description */
             .description-section {
-                margin-top: 12px;
-                padding: 12px;
+                margin-top: 20px;
+                padding: 20px;
             }
             
             .description-label {
-                font-size: 14px;
-                margin-bottom: 10px;
+                font-size: 15px;
+                margin-bottom: 12px;
             }
             
             .description-text {
-                padding: 10px;
-                font-size: 13px;
+                padding: 15px;
+                font-size: 14px;
+                line-height: 1.6;
+            }
+            
+            .description-text::before,
+            .description-text::after {
+                font-size: 25px;
             }
             
             .description-input {
-                min-height: 80px;
-                padding: 10px;
-                font-size: 13px;
+                min-height: 90px;
+                padding: 12px;
+                font-size: 14px;
             }
             
             .save-description-btn {
-                width: 100%;
                 padding: 10px;
                 font-size: 13px;
             }
