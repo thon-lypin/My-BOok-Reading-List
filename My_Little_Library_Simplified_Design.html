@@ -611,6 +611,30 @@
             .review-collapsible .review-read-more { display: flex; align-items: center; justify-content: center; }
         }
 
+
+        /* Accessible on/off switch for complete book reviews. All text remains intact. */
+        .review-toggle-section { padding: 0 !important; overflow: hidden; }
+        .review-toggle-section::before { z-index: 1; }
+        .review-details { padding: 0; }
+        .review-summary { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:24px 25px; cursor:pointer; list-style:none; user-select:none; }
+        .review-summary::-webkit-details-marker { display:none; }
+        .review-summary:focus-visible { outline:3px solid #8fa78a; outline-offset:-5px; border-radius:14px; }
+        .review-summary-title { display:flex; align-items:center; gap:10px; color:#344D3B; font-size:1rem; font-weight:700; letter-spacing:.7px; text-transform:uppercase; }
+        .review-summary-action { display:inline-flex; align-items:center; gap:9px; flex-shrink:0; padding:9px 14px; border:1px solid #c7d7c2; background:#edf3e9; color:#344D3B; border-radius:999px; font-size:.82rem; font-weight:600; }
+        .review-summary-action i { transition:transform .2s ease; }
+        .review-open-label { display:none; }
+        .review-details[open] .review-open-label { display:inline; }
+        .review-details[open] .review-closed-label { display:none; }
+        .review-details[open] .review-summary-action i { transform:rotate(180deg); }
+        .review-details[open] .review-summary { border-bottom:1px solid #e3eadd; }
+        .review-full-text { margin:18px 22px 23px; white-space:pre-wrap; overflow-wrap:anywhere; }
+        @media(max-width:600px) {
+            .review-summary { padding:17px 14px; gap:8px; }
+            .review-summary-title { font-size:.84rem; gap:7px; letter-spacing:.2px; }
+            .review-summary-action { padding:8px 10px; gap:6px; font-size:.75rem; }
+            .review-full-text { margin:12px 12px 15px; padding:15px 12px 15px 18px; font-size:.88rem; line-height:1.65; }
+        }
+
 </style>
 </head>
 <body>
@@ -1457,19 +1481,12 @@
             var cv = c ? '<img src="' + c + '" alt="' + n + '" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"><i class="fas fa-book" style="display:none"></i>' : '<i class="fas fa-book"></i>';
             var badge = b.finished ? '<div class="finished-badge">Finished</div>' : '<div class="reading-badge">Reading</div>';
             var desc = '';
-            if (b.finished) desc = d ? '<div class="description-section' + ((b.description || '').length > 260 ? ' review-collapsible' : '') + '"><div class="description-label"><i class="fas fa-pen-fancy"></i> Final Thoughts</div><div class="description-text">' + d + '</div>' + ((b.description || '').length > 260 ? '<button type="button" class="review-read-more" aria-expanded="false" onclick="toggleFullReview(this)">Read full review ↓</button>' : '') + '</div>' : '<div class="description-section"><div class="description-label"><i class="fas fa-pen-fancy"></i> Final Thoughts</div><div class="finished-form-row"><textarea class="description-input" id="desc-' + b.id + '" placeholder="Share your final thoughts..."></textarea><button class="save-description-btn" onclick="saveDesc(' + b.id + ')"><i class="fas fa-save"></i> Save</button></div></div>';
+            if (b.finished) desc = d
+                ? '<div class="description-section review-toggle-section"><details class="review-details"><summary class="review-summary"><span class="review-summary-title"><i class="fas fa-pen-fancy"></i> Final Thoughts</span><span class="review-summary-action"><span class="review-closed-label">Show review</span><span class="review-open-label">Hide review</span><i class="fas fa-chevron-down" aria-hidden="true"></i></span></summary><div class="description-text review-full-text">' + d + '</div></details></div>'
+                : '<div class="description-section"><div class="description-label"><i class="fas fa-pen-fancy"></i> Final Thoughts</div><div class="finished-form-row"><textarea class="description-input" id="desc-' + b.id + '" placeholder="Share your final thoughts..."></textarea><button class="save-description-btn" onclick="saveDesc(' + b.id + ')"><i class="fas fa-save"></i> Save</button></div></div>';
             var mk = !b.finished ? '<button class="btn btn-secondary" onclick="markFin(' + b.id + ')"><i class="fas fa-check"></i> Mark Finished</button>' : '';
             return '<div class="book-card">' + badge + '<div class="book-card-main"><div class="book-cover">' + cv + '</div><div class="book-info"><h3 class="book-title">' + n + '</h3><div class="book-meta-row">' + meta + '</div>' + feel + prog + stars + '</div></div>' + desc + '<div class="book-actions"><button class="btn btn-edit" onclick="editBook(' + b.id + ')"><i class="fas fa-edit"></i> Edit</button>' + mk + '<button class="btn btn-danger" onclick="delBook(' + b.id + ')"><i class="fas fa-trash"></i> Delete</button></div></div>';
         }).join('');
-    }
-
-    // Expand long review cards only when the reader asks; text is never shortened or deleted.
-    function toggleFullReview(button) {
-        var text = button.previousElementSibling;
-        if (!text) return;
-        var expanded = text.classList.toggle('review-expanded');
-        button.textContent = expanded ? 'Show less ↑' : 'Read full review ↓';
-        button.setAttribute('aria-expanded', expanded ? 'true' : 'false');
     }
 
     function esc(t) { var d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
