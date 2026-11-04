@@ -593,6 +593,50 @@
         .image-preview { width:120px; height:176px; }
         .wish-cover { width:100px; height:145px; background:#f5f2e9; }
         @media (max-width:600px) { .book-cover { width:140px; height:205px; } }
+
+        /* MOBILE REVIEW REFINEMENT — long reviews stay readable without a giant card. */
+        .description-text { overflow-wrap: anywhere; word-break: normal; white-space: pre-wrap; }
+        .review-read-more { display: none; border: 1px solid #b9cbb3; background: #edf3e9; color: #344D3B; font: 600 .83rem 'Poppins',sans-serif; border-radius: 999px; padding: 10px 17px; margin: 14px auto 0; cursor: pointer; }
+        .review-read-more:focus-visible { outline: 3px solid #8da88b; outline-offset: 3px; }
+        @media (max-width: 600px) {
+            .description-section { margin-top: 17px; padding: 15px 13px; border-radius: 16px; border-width: 1px; box-shadow: 0 3px 13px rgba(52,77,59,.06); }
+            .description-section:hover { transform: none; box-shadow: 0 3px 13px rgba(52,77,59,.06); }
+            .description-label { font-size: .9rem; margin-bottom: 12px; gap: 8px; letter-spacing: .5px; }
+            .description-label i { font-size: 17px; }
+            .description-text { font-size: .88rem; line-height: 1.7; padding: 17px 15px 17px 20px; border-left-width: 4px; border-radius: 12px; min-height: 0; box-shadow: 0 2px 9px rgba(52,77,59,.05); }
+            .description-text::before { font-size: 28px; top: 4px; left: 8px; }
+            .description-text::after { display: none; }
+            .review-collapsible .description-text:not(.review-expanded) { max-height: 12.5em; overflow: hidden; position: relative; }
+            .review-collapsible .description-text:not(.review-expanded)::after { content: ''; display: block; position: absolute; bottom: 0; left: 0; right: 0; height: 3.5em; background: linear-gradient(transparent, #fff 94%); pointer-events: none; }
+            .review-collapsible .review-read-more { display: flex; align-items: center; justify-content: center; }
+        .review-collapsible .review-read-more[hidden] { display: none; }
+        }
+
+
+        /* Three-line reviews, across mobile and desktop. Full content stays in the DOM. */
+        .review-collapsible .description-text { max-height: none; overflow: visible; }
+        .review-collapsible .review-copy {
+            display: -webkit-box;
+            -webkit-box-orient: vertical;
+            -webkit-line-clamp: 3;
+            line-clamp: 3;
+            overflow: hidden;
+            white-space: pre-wrap;
+            overflow-wrap: anywhere;
+            line-height: 1.7;
+        }
+        .review-collapsible .description-text.review-expanded .review-copy {
+            display: block;
+            -webkit-line-clamp: unset;
+            line-clamp: unset;
+            overflow: visible;
+        }
+        .review-collapsible .review-read-more { display: flex; align-items: center; justify-content: center; }
+        .review-collapsible .review-read-more[hidden] { display: none; }
+        @media (max-width:600px) {
+            .review-collapsible .description-text:not(.review-expanded) { max-height: none; overflow: visible; }
+            .review-collapsible .description-text:not(.review-expanded)::after { display: none; }
+        }
 </style>
 </head>
 <body>
@@ -1412,6 +1456,7 @@
         renderList(readingBooksList, readingBooks, "reading");
         renderList(finishedBooksList, books.filter(function(b) { return b.finished; }), "finished");
         updateRandomPicker();
+        requestAnimationFrame(updateReviewToggleVisibility);
     }
 
     function renderList(container, list, type) {
@@ -1439,10 +1484,41 @@
             var cv = c ? '<img src="' + c + '" alt="' + n + '" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"><i class="fas fa-book" style="display:none"></i>' : '<i class="fas fa-book"></i>';
             var badge = b.finished ? '<div class="finished-badge">Finished</div>' : '<div class="reading-badge">Reading</div>';
             var desc = '';
-            if (b.finished) desc = d ? '<div class="description-section"><div class="description-label"><i class="fas fa-pen-fancy"></i> Final Thoughts</div><div class="description-text">' + d + '</div></div>' : '<div class="description-section"><div class="description-label"><i class="fas fa-pen-fancy"></i> Final Thoughts</div><div class="finished-form-row"><textarea class="description-input" id="desc-' + b.id + '" placeholder="Share your final thoughts..."></textarea><button class="save-description-btn" onclick="saveDesc(' + b.id + ')"><i class="fas fa-save"></i> Save</button></div></div>';
+            if (b.finished) desc = d ? '<div class="description-section review-collapsible"><div class="description-label"><i class="fas fa-pen-fancy"></i> Final Thoughts</div><div class="description-text"><div class="review-copy">' + d + '</div></div><button type="button" class="review-read-more" aria-expanded="false" onclick="toggleFullReview(this)">Read more ↓</button></div>' : '<div class="description-section"><div class="description-label"><i class="fas fa-pen-fancy"></i> Final Thoughts</div><div class="finished-form-row"><textarea class="description-input" id="desc-' + b.id + '" placeholder="Share your final thoughts..."></textarea><button class="save-description-btn" onclick="saveDesc(' + b.id + ')"><i class="fas fa-save"></i> Save</button></div></div>';
             var mk = !b.finished ? '<button class="btn btn-secondary" onclick="markFin(' + b.id + ')"><i class="fas fa-check"></i> Mark Finished</button>' : '';
             return '<div class="book-card">' + badge + '<div class="book-card-main"><div class="book-cover">' + cv + '</div><div class="book-info"><h3 class="book-title">' + n + '</h3><div class="book-meta-row">' + meta + '</div>' + feel + prog + stars + '</div></div>' + desc + '<div class="book-actions"><button class="btn btn-edit" onclick="editBook(' + b.id + ')"><i class="fas fa-edit"></i> Edit</button>' + mk + '<button class="btn btn-danger" onclick="delBook(' + b.id + ')"><i class="fas fa-trash"></i> Delete</button></div></div>';
         }).join('');
+    }
+
+    // Only display the toggle when the review actually extends beyond three lines.
+    function updateReviewToggleVisibility() {
+        document.querySelectorAll('.review-collapsible').forEach(function(section) {
+            var copy = section.querySelector('.review-copy');
+            var button = section.querySelector('.review-read-more');
+            if (!copy || !button) return;
+            var isExpanded = section.querySelector('.description-text').classList.contains('review-expanded');
+            if (isExpanded) { button.hidden = false; return; }
+            // Measure un-clamped content without changing the user's reading position.
+            var lineHeight = parseFloat(window.getComputedStyle(copy).lineHeight);
+            copy.style.display = 'block';
+            copy.style.webkitLineClamp = 'unset';
+            copy.style.lineClamp = 'unset';
+            var fullHeight = copy.getBoundingClientRect().height;
+            copy.style.removeProperty('display');
+            copy.style.removeProperty('-webkit-line-clamp');
+            copy.style.removeProperty('line-clamp');
+            button.hidden = !(fullHeight > lineHeight * 3 + 2);
+        });
+    }
+    window.addEventListener('resize', function() { requestAnimationFrame(updateReviewToggleVisibility); });
+
+    // Expand long review cards only when the reader asks; text is never shortened or deleted.
+    function toggleFullReview(button) {
+        var text = button.previousElementSibling;
+        if (!text) return;
+        var expanded = text.classList.toggle('review-expanded');
+        button.textContent = expanded ? 'Show less ↑' : 'Read more ↓';
+        button.setAttribute('aria-expanded', expanded ? 'true' : 'false');
     }
 
     function esc(t) { var d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
@@ -1575,95 +1651,24 @@
         var blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');
         a.href=url;a.download='my-little-library-backup-'+new Date().toISOString().slice(0,10)+'.json';document.body.append(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url)},1000);
     }
-    // Import old and new library backups, even when their reader profiles differ.
-    // Always merge recovered books into the currently visible shelf, never delete books.
     async function importLibraryBackup(event) {
-        var file = event.target.files[0]; event.target.value = ''; if (!file) return;
+        var file=event.target.files[0];event.target.value='';if(!file)return;
         try {
-            var data = JSON.parse(await file.text());
-            var entries = {};
-            if (Array.isArray(data)) {
-                // Support older backups exported as a simple array of books.
-                entries.books = JSON.stringify(data);
-            } else if (data && data.type === 'my-little-library-backup' && data.entries && typeof data.entries === 'object') {
-                entries = data.entries;
-            } else if (data && Array.isArray(data.books)) {
-                // Support JSON exports in the form {books: [...], wishlist: [...]}.
-                entries.books = JSON.stringify(data.books);
-                if (Array.isArray(data.wishlist)) entries.reading_wishlist_reader = JSON.stringify(data.wishlist);
-            } else {
-                throw Error('This does not look like a My Little Library backup.');
-            }
-            if (!confirm('Restore books from this backup? New books will be added to your current shelf. Existing books will NOT be deleted.')) return;
-
-            function arrayFrom(raw) {
-                try { var x = typeof raw === 'string' ? JSON.parse(raw) : raw; return Array.isArray(x) ? x : []; }
-                catch (err) { return []; }
-            }
-            function mergeUnique(destination, incoming) {
-                var result = destination.slice();
-                var ids = new Set(result.filter(Boolean).map(function(x) { return String(x.id); }));
-                var signatures = new Set(result.filter(Boolean).map(function(x) { return String(x.name || x.title || '').trim().toLowerCase() + '|' + String(x.author || '').trim().toLowerCase(); }));
-                incoming.forEach(function(item) {
-                    if (!item || typeof item !== 'object') return;
-                    var hasId = item.id !== undefined && item.id !== null;
-                    var id = String(item.id);
-                    var sig = String(item.name || item.title || '').trim().toLowerCase() + '|' + String(item.author || '').trim().toLowerCase();
-                    if ((hasId && ids.has(id)) || (sig !== '|' && signatures.has(sig))) return;
-                    var copy = Object.assign({}, item);
-                    if (!hasId) copy.id = Date.now() + Math.floor(Math.random() * 100000000);
-                    result.push(copy); ids.add(String(copy.id)); signatures.add(sig);
-                });
-                return result;
-            }
-
-            var restoredBooks = Array.isArray(books) ? books.slice() : [];
-            var restoredWish = getWishlist();
-            var beforeBooks = restoredBooks.length;
-            var beforeWish = restoredWish.length;
-            var bookSources = 0;
-
-            // Look inside all reader profiles in the file, not only the currently signed-in reader.
-            Object.keys(entries).forEach(function(key) {
-                if (key === 'books' || key.startsWith('reading_books_')) {
-                    var found = arrayFrom(entries[key]);
-                    if (found.length) bookSources++;
-                    restoredBooks = mergeUnique(restoredBooks, found);
-                } else if (key.startsWith('reading_wishlist_')) {
-                    restoredWish = mergeUnique(restoredWish, arrayFrom(entries[key]));
-                }
+            var data=JSON.parse(await file.text());
+            if(!data || data.type!=='my-little-library-backup'|| !data.entries || typeof data.entries!=='object')throw Error('Not a library backup');
+            if(!confirm('Import this backup? Existing books and wishlist items will be merged, not erased.'))return;
+            Object.keys(data.entries).forEach(function(key){
+                if(!(key==='books'||key==='reading_session'||key==='reading_users'||key.startsWith('reading_')))return;
+                var incoming=data.entries[key];if(typeof incoming!=='string')return;
+                if(key.startsWith('reading_books_')||key.startsWith('reading_wishlist_')||key==='books'){
+                    var a=JSON.parse(localStorage.getItem(key)||'[]'),b=JSON.parse(incoming);
+                    if(Array.isArray(a)&&Array.isArray(b)) {var seen=new Set(a.map(function(x){return String(x.id)}));b.forEach(function(x){if(x&&typeof x==='object'&&!seen.has(String(x.id))){a.push(x);seen.add(String(x.id));}});localStorage.setItem(key,JSON.stringify(a));}
+                }else if(localStorage.getItem(key)===null){localStorage.setItem(key,incoming);}
             });
-
-            // Previous imports may already have saved a different reader's books in this browser.
-            // Recover these too without changing the user's current session or deleting any key.
-            for (var i = 0; i < localStorage.length; i++) {
-                var key = localStorage.key(i);
-                if (key && (key === 'books' || key.startsWith('reading_books_'))) {
-                    restoredBooks = mergeUnique(restoredBooks, arrayFrom(localStorage.getItem(key)));
-                }
-                if (key && key.startsWith('reading_wishlist_')) {
-                    restoredWish = mergeUnique(restoredWish, arrayFrom(localStorage.getItem(key)));
-                }
-            }
-
-            var addedBooks = restoredBooks.length - beforeBooks;
-            var addedWish = restoredWish.length - beforeWish;
-            if (addedBooks === 0 && addedWish === 0 && bookSources === 0) {
-                alert('No saved books were found in this file. Please choose a backup exported from the original website.');
-                return;
-            }
-
-            // Save to the profile that this page actually reads.
-            // If browser storage is full, retain current in-memory data and report clearly.
-            localStorage.setItem(getBookKey(currentUser), JSON.stringify(restoredBooks));
-            localStorage.setItem(wishKey(), JSON.stringify(restoredWish));
-            books = restoredBooks;
-            renderBooks(); updateStats(); renderWishlist();
-            alert('Import finished! Added ' + addedBooks + ' book(s) and ' + addedWish + ' wishlist item(s). Your current shelf now contains ' + books.length + ' book(s).');
-        } catch (e) {
-            console.error('Library import error:', e);
-            alert('Import could not finish. ' + (e && e.name === 'QuotaExceededError' ? 'Browser storage may be full; try exporting smaller book covers.' : 'Please choose a valid My Little Library JSON backup.'));
-        }
+            // Keep current session and user; load books from currently selected user.
+            var k=getBookKey(currentUser); books=JSON.parse(localStorage.getItem(k)||'[]');if(!Array.isArray(books))books=[];
+            renderBooks();updateStats();renderWishlist();showToast('Backup imported. Your books were merged.','success');
+        }catch(e){showToast('Could not import this file. Use an exported library JSON backup.','error');}
     }
 
     function showToast(msg, type) { toast.textContent = msg; toast.className = "toast show"; toast.style.background = type === "error" ? "#ff6b6b" : "var(--dark-pink)"; setTimeout(function() { toast.className = "toast"; }, 3500); }
