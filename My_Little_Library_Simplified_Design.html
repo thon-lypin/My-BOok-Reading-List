@@ -1,0 +1,1637 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>📚 My Reading Tracker</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+    <style>
+        :root {
+            --primary-pink: #58745B;
+            --dark-pink: #344D3B;
+            --light-pink: #C98D78;
+            --lighter-pink: #DCE6D8;
+            --background: #F7F3EA;
+            --card-bg: #FFFEFA;
+            --text-dark: #303B32;
+            --text-light: #73796F;
+            --border-radius: 22px;
+            --shadow: 0 8px 25px rgba(52, 77, 59, 0.09);
+            --description-bg: linear-gradient(135deg, #F8F5EC 0%, #EAF0E6 100%);
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: radial-gradient(circle at 8% 4%, rgba(220,230,216,.78), transparent 32%), radial-gradient(circle at 95% 12%, rgba(201,141,120,.12), transparent 28%), linear-gradient(135deg, #F7F3EA 0%, #F3F0E6 100%);
+            min-height: 100vh; padding: 24px; color: var(--text-dark);
+        }
+
+        /* APP */
+        .app-screen { display: none; }
+        .app-header { display: flex; justify-content: space-between; align-items: center; margin: 0 auto 14px; max-width: 1180px; }
+        .user-badge { display: flex; align-items: center; gap: 10px; background: white; padding: 8px 18px; border-radius: 30px; box-shadow: 0 4px 15px rgba(52, 77, 59, 0.07); }
+        .user-avatar { width: 32px; height: 32px; background: linear-gradient(135deg, #8FA78A, #58745B); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 0.85rem; }
+        .user-name { font-weight: 600; font-size: 0.9rem; }
+        .header-actions { display: flex; gap: 8px; align-items: center; }
+        .header-note { color: var(--text-light); font-size: .86rem; display: flex; align-items: center; gap: 8px; }
+        .header-note i { color: var(--primary-pink); }
+        .user-badge { background: rgba(255,254,250,.9); border: 1px solid rgba(88,116,91,.12); box-shadow: 0 4px 15px rgba(52,77,59,.06); }
+        .user-avatar { background: linear-gradient(135deg, #58745B, #8FA78A); }
+
+        .sync-status { background: rgba(255,253,248,.88); border: 1px solid rgba(88,116,91,.13); border-radius: 12px; padding: 10px 18px; margin: 0 auto 18px; max-width: 1180px; box-shadow: 0 4px 15px rgba(52, 77, 59, 0.06); display: flex; align-items: center; gap: 10px; font-size: 0.82rem; color: var(--text-light); }
+        .sync-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; animation: pulse 2s infinite; }
+        .sync-dot.online { background: #4CAF50; }
+        .sync-dot.offline { background: #C98D45; }
+        .sync-dot.local-only { background: #C98D78; }
+        .sync-label { font-weight: 600; }
+        .sync-label.online { color: #4CAF50; }
+        .sync-label.offline { color: #C98D45; }
+        .sync-label.local-only { color: #C98D78; }
+
+        header { text-align: center; margin: 0 auto 26px; padding: 18px 0 22px; max-width: 1180px; }
+        .book-stack-icon { position: relative; display: inline-block; margin-bottom: 20px; height: 100px; width: 100px; }
+        .book { position: absolute; width: 60px; height: 70px; background: linear-gradient(135deg, #8FA78A, #58745B); border-radius: 5px; box-shadow: 0 4px 15px rgba(52, 77, 59, 0.13); transform-origin: bottom center; }
+        .book1 { transform: rotate(-5deg); z-index: 1; }
+        .book2 { transform: rotate(0deg); z-index: 2; left: 10px; }
+        .book3 { transform: rotate(5deg); z-index: 3; left: 5px; top: 5px; }
+        .book4 { transform: rotate(-2deg); z-index: 4; left: 15px; top: 10px; }
+        h1 { font-size: 2.8rem; background: linear-gradient(135deg, #58745B, #344D3B); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; margin: 0; font-weight: 700; }
+        .subtitle { color: var(--text-light); font-size: 1.2rem; margin-top: 10px; }
+        .decorative-dots { display: flex; justify-content: center; gap: 8px; margin-top: 15px; }
+        .dot { width: 8px; height: 8px; background: #8FA78A; border-radius: 50%; animation: pulse 2s infinite; }
+        .dot:nth-child(2) { animation-delay: 0.3s; }
+        .dot:nth-child(3) { animation-delay: 0.6s; }
+        @keyframes pulse { 0%, 100% { opacity: 0.5; transform: scale(1); } 50% { opacity: 1; transform: scale(1.2); } }
+
+        .stats-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px; margin: 0 auto 28px; max-width: 1180px; }
+        .stat-box { background: rgba(255,253,248,.94); border: 1px solid rgba(88,116,91,.11); border-radius: var(--border-radius); padding: 22px 18px; text-align: center; box-shadow: var(--shadow); transition: transform 0.3s, box-shadow 0.3s; }
+        .stat-box:hover { transform: translateY(-5px); box-shadow: 0 12px 40px rgba(52, 77, 59, 0.12); }
+        .stat-number { font-size: 2.5rem; font-weight: 700; color: var(--primary-pink); margin-bottom: 5px; }
+        .stat-label { color: var(--text-light); font-size: 0.9rem; text-transform: uppercase; letter-spacing: 1px; }
+
+        .form-container, .edit-mode { background: var(--card-bg); border: 1px solid rgba(88,116,91,.11); border-radius: var(--border-radius); padding: 30px; margin: 0 auto 28px; max-width: 1180px; box-shadow: var(--shadow); }
+        .edit-mode { display: none; }
+        .edit-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 25px; padding-bottom: 15px; border-bottom: 2px solid rgba(88, 116, 91, 0.18); }
+        .edit-title { color: var(--primary-pink); font-size: 1.5rem; display: flex; align-items: center; gap: 10px; }
+        .form-title { color: var(--primary-pink); font-size: 1.5rem; margin-bottom: 25px; display: flex; align-items: center; gap: 10px; }
+        .form-row { display: flex; gap: 20px; margin-bottom: 20px; flex-wrap: wrap; }
+        .form-group { flex: 1; min-width: 250px; }
+        .form-group.half-width { flex: 1 1 45%; max-width: 45%; }
+        .form-group.full-width { flex: 1 1 100%; max-width: 100%; }
+        label { display: block; margin-bottom: 8px; color: var(--text-dark); font-weight: 500; }
+        input, select, textarea { width: 100%; padding: 12px 15px; border: 2px solid var(--lighter-pink); border-radius: 10px; font-size: 1rem; transition: border-color 0.3s, box-shadow 0.3s; background: #fff; font-family: 'Poppins', sans-serif; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: var(--primary-pink); box-shadow: 0 0 0 3px rgba(52, 77, 59, 0.08); }
+        textarea { resize: vertical; min-height: 80px; }
+        .image-upload-container { display: flex; gap: 15px; align-items: flex-start; }
+        .image-preview { width: 100px; height: 140px; border: 2px dashed var(--primary-pink); border-radius: 10px; display: flex; align-items: center; justify-content: center; background: var(--background); overflow: hidden; flex-shrink: 0; }
+        .image-preview i { font-size: 2rem; color: var(--primary-pink); }
+        .image-preview img { width: 100%; height: 100%; object-fit: cover; }
+        .image-input-group { flex: 1; display: flex; flex-direction: column; gap: 10px; }
+        .image-upload-btn { padding: 8px 15px; background: var(--primary-pink); color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 0.9rem; transition: background 0.3s; align-self: flex-start; }
+        .image-upload-btn:hover { background: var(--dark-pink); }
+        .image-size-hint { font-size: 11px; color: var(--text-light); }
+        .rating-container { display: flex; gap: 5px; margin-top: 5px; }
+        .star { font-size: 1.5rem; color: #ddd; cursor: pointer; transition: color 0.2s, transform 0.2s; }
+        .star:hover { transform: scale(1.1); }
+        .star.active { color: #ffc107; }
+        .btn { padding: 12px 25px; border: none; border-radius: 10px; cursor: pointer; font-size: 1rem; font-weight: 500; transition: all 0.3s; display: inline-flex; align-items: center; gap: 8px; }
+        .btn-primary { background: linear-gradient(135deg, var(--primary-pink), var(--dark-pink)); color: white; width: 100%; justify-content: center; margin-top: 10px; }
+        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(52, 77, 59, 0.13); }
+        .btn-secondary { background: var(--lighter-pink); color: var(--primary-pink); }
+        .btn-secondary:hover { background: var(--light-pink); }
+        .btn-edit { background: #4CAF50; color: white; }
+        .btn-edit:hover { background: #45a049; }
+        .btn-danger { background: #C98D78; color: white; }
+        .btn-danger:hover { background: #da190b; }
+
+        .books-container { background: rgba(255,253,248,.96); border: 1px solid rgba(88,116,91,.11); border-radius: var(--border-radius); padding: 30px; margin: 0 auto; max-width: 1180px; box-shadow: var(--shadow); }
+        .tabs { display: flex; margin-bottom: 30px; border-bottom: 1px solid var(--lighter-pink); overflow-x: auto; }
+        .tab { padding: 12px 25px; background: none; border: none; color: var(--text-light); cursor: pointer; font-size: 1rem; font-weight: 500; transition: all 0.3s; position: relative; white-space: nowrap; }
+        .tab:hover { color: var(--primary-pink); }
+        .tab.active { color: var(--primary-pink); }
+        .tab.active::after { content: ''; position: absolute; bottom: -1px; left: 0; right: 0; height: 3px; background: var(--primary-pink); border-radius: 3px 3px 0 0; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.5s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        .books-title { color: var(--primary-pink); font-size: 1.3rem; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+        .books-list { display: flex; flex-direction: column; gap: 30px; }
+        .book-card { background: #fffdf8; border: 1px solid rgba(88,116,91,.11); border-radius: 20px; padding: 30px; box-shadow: 0 8px 25px rgba(92,72,52,0.07); transition: all 0.3s; position: relative; overflow: visible; margin-top: 20px; }
+        .book-card:hover { transform: translateY(-5px); box-shadow: 0 12px 35px rgba(0,0,0,0.12); }
+        .reading-badge, .finished-badge { position: absolute; top: -12px; right: 15px; color: white; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; z-index: 10; white-space: nowrap; }
+        .reading-badge { background: linear-gradient(135deg, var(--primary-pink), var(--dark-pink)); box-shadow: 0 3px 10px rgba(233,30,99,0.3); }
+        .finished-badge { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); box-shadow: 0 3px 10px rgba(102,126,234,0.3); }
+        .book-card-main { display: flex; gap: 20px; margin-bottom: 25px; position: relative; z-index: 1; }
+        .book-cover { width: 120px; height: 170px; border-radius: 10px; overflow: hidden; background: var(--lighter-pink); display: flex; align-items: center; justify-content: center; flex-shrink: 0; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        .book-cover i { font-size: 3rem; color: var(--primary-pink); }
+        .book-cover img { width: 100%; height: 100%; object-fit: cover; }
+        .book-info { flex: 1; padding: 0 0 0 20px; }
+        .book-title { font-size: 22px; font-weight: 700; color: #333; margin-bottom: 12px; line-height: 1.3; }
+        .book-meta-row { display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 15px; }
+        .book-meta-item { display: flex; align-items: center; gap: 6px; font-size: 14px; color: #666; background: rgba(220,230,216,0.35); padding: 6px 12px; border-radius: 20px; transition: all 0.3s; }
+        .book-meta-item:hover { background: rgba(220,230,216,0.55); transform: translateY(-1px); }
+        .book-meta-item i { color: var(--dark-pink); font-size: 12px; }
+        .book-feeling { background: linear-gradient(135deg, #f7f0e5, #f4e4e5); padding: 12px 15px; border-radius: 10px; margin-bottom: 15px; font-style: italic; color: #344D3B; border-left: 4px solid var(--light-pink); }
+        .book-feeling i { color: var(--primary-pink); margin-right: 8px; }
+        .book-progress { margin-bottom: 15px; }
+        .progress-info { display: flex; justify-content: space-between; margin-bottom: 8px; font-size: 0.9rem; color: var(--text-light); }
+        .progress-bar { height: 9px; background: #e5e7dc; border-radius: 10px; overflow: hidden; }
+        .progress { height: 100%; background: linear-gradient(90deg, #b8c9ad, #58745B); border-radius: 10px; transition: width 0.5s; }
+        .book-rating { display: flex; gap: 3px; margin-top: 10px; }
+        .book-actions { display: flex; gap: 10px; flex-wrap: wrap; padding-top: 15px; border-top: 1px solid var(--lighter-pink); justify-content: center; }
+        .description-section { margin-top: 30px; padding: 30px; background: var(--description-bg); border-radius: 18px; border: 3px solid rgba(255,182,193,0.4); position: relative; overflow: hidden; box-shadow: 0 10px 30px rgba(255,107,157,0.15); transition: all 0.3s; }
+        .description-section:hover { transform: translateY(-3px); box-shadow: 0 15px 40px rgba(255,107,157,0.2); border-color: rgba(255,182,193,0.6); }
+        .description-section::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 5px; background: linear-gradient(90deg, var(--dark-pink), var(--light-pink), var(--dark-pink)); background-size: 200% 100%; animation: shimmer 3s infinite; }
+        .description-label { display: flex; align-items: center; gap: 10px; font-weight: 700; color: var(--dark-pink); margin-bottom: 20px; font-size: 18px; text-transform: uppercase; letter-spacing: 1px; }
+        .description-label i { font-size: 22px; animation: pulse 2s infinite; }
+        .description-text { background: white; padding: 25px; border-radius: 15px; border-left: 5px solid var(--dark-pink); font-style: italic; color: #444; line-height: 1.8; font-size: 16px; box-shadow: 0 5px 20px rgba(0,0,0,0.08); position: relative; min-height: 80px; }
+        .description-text::before { content: '\201C'; position: absolute; top: 10px; left: 15px; font-size: 40px; color: rgba(233,30,99,0.1); font-family: Georgia, serif; }
+        .description-text::after { content: '\201D'; position: absolute; bottom: -10px; right: 15px; font-size: 40px; color: rgba(233,30,99,0.1); font-family: Georgia, serif; }
+        .finished-form-row { display: flex; flex-direction: column; gap: 15px; }
+        .description-input { width: 100%; min-height: 120px; padding: 20px; border: 3px solid rgba(255,182,193,0.4); border-radius: 15px; font-family: 'Poppins', sans-serif; font-size: 16px; resize: vertical; transition: all 0.3s; background: white; }
+        .description-input:focus { outline: none; border-color: var(--dark-pink); box-shadow: 0 0 0 4px rgba(233,30,99,0.15); }
+        .save-description-btn { align-self: flex-end; background: linear-gradient(135deg, var(--dark-pink), var(--light-pink)); color: white; border: none; padding: 12px 25px; border-radius: 30px; font-weight: 600; cursor: pointer; transition: all 0.3s; box-shadow: 0 6px 20px rgba(233,30,99,0.3); font-size: 15px; text-transform: uppercase; letter-spacing: 1px; }
+        .save-description-btn:hover { transform: translateY(-3px); box-shadow: 0 8px 25px rgba(233,30,99,0.4); }
+        .empty-state { text-align: center; padding: 60px 20px; color: var(--text-light); }
+        .empty-state i { font-size: 4rem; color: var(--light-pink); margin-bottom: 20px; animation: pulse 2s infinite; }
+        .empty-state p { font-size: 1.1rem; }
+        .toast { position: fixed; bottom: 30px; right: 30px; background: var(--dark-pink); color: white; padding: 15px 25px; border-radius: 15px; box-shadow: 0 10px 30px rgba(0,0,0,0.3); transform: translateY(100px); opacity: 0; transition: all 0.3s; z-index: 3000; font-weight: 500; max-width: 90vw; }
+        .toast.show { transform: translateY(0); opacity: 1; }
+        .edit-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 10px; }
+        .edit-actions .btn { padding: 8px 16px; font-size: 14px; min-width: auto; flex: 0 1 auto; white-space: nowrap; }
+        .edit-actions .btn i { margin-right: 6px; font-size: 12px; }
+
+        /* ==================== RANDOM PICKER ==================== */
+        .random-picker {
+            background: linear-gradient(135deg, #f7f0e5 0%, #e8eee3 58%, #f3e3e4 100%);
+            border: 1px solid rgba(128, 101, 82, 0.18);
+            border-radius: 24px;
+            padding: 35px 30px;
+            text-align: center;
+            margin-bottom: 30px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 40px rgba(92, 72, 52, 0.09);
+            transition: all 0.3s;
+        }
+
+        .random-picker:hover {
+            border-color: rgba(255, 182, 193, 0.8);
+            box-shadow: 0 15px 50px rgba(255, 107, 157, 0.2);
+        }
+
+        .random-picker::before {
+            content: '';
+            position: absolute; top: 0; left: 0; right: 0; height: 5px;
+            background: linear-gradient(90deg, #58745B, #dce6d8, #e9c8ce, #58745B);
+            background-size: 300% 100%;
+            animation: rainbow 3s linear infinite;
+        }
+
+        @keyframes rainbow { 0% { background-position: 0% 50%; } 100% { background-position: 300% 50%; } }
+
+        .picker-title {
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: var(--dark-pink);
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .picker-subtitle {
+            font-size: 0.85rem;
+            color: var(--text-light);
+            margin-bottom: 22px;
+        }
+
+        .picker-count {
+            display: inline-block;
+            background: white;
+            padding: 3px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--dark-pink);
+            box-shadow: 0 2px 8px rgba(128, 101, 82, 0.10);
+        }
+
+        .shuffle-btn {
+            background: linear-gradient(135deg, #58745B, #344D3B);
+            color: white; border: none;
+            padding: 16px 44px; border-radius: 50px;
+            font-size: 1.1rem; font-weight: 600;
+            cursor: pointer; transition: all 0.3s;
+            font-family: 'Poppins', sans-serif;
+            display: inline-flex; align-items: center; gap: 12px;
+            box-shadow: 0 6px 25px rgba(233, 30, 99, 0.3);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .shuffle-btn:hover { transform: translateY(-3px) scale(1.03); box-shadow: 0 10px 35px rgba(233, 30, 99, 0.4); }
+        .shuffle-btn:active { transform: translateY(0) scale(0.98); }
+        .shuffle-btn:disabled { opacity: 0.7; cursor: not-allowed; transform: none !important; }
+
+        .shuffle-btn.shuffling { animation: btnShake 0.08s infinite alternate; }
+        @keyframes btnShake {
+            0% { transform: rotate(-2deg) scale(1.02); }
+            100% { transform: rotate(2deg) scale(0.98); }
+        }
+
+        .shuffle-btn .btn-sparkle {
+            position: absolute; top: -50%; left: -50%;
+            width: 200%; height: 200%;
+            background: linear-gradient(45deg, transparent 40%, rgba(255,255,255,0.3) 50%, transparent 60%);
+            animation: sparkle 2s infinite;
+        }
+
+        @keyframes sparkle { 0% { transform: translateX(-100%) rotate(25deg); } 100% { transform: translateX(100%) rotate(25deg); } }
+
+        .shuffle-text {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: var(--dark-pink);
+            margin-top: 22px;
+            min-height: 45px;
+            display: none;
+            line-height: 1.3;
+            padding: 0 10px;
+        }
+
+        .random-result {
+            margin-top: 25px;
+            display: none;
+        }
+
+        .random-result.pop-in {
+            animation: popIn 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        @keyframes popIn {
+            0% { opacity: 0; transform: scale(0.6) translateY(30px); }
+            60% { transform: scale(1.08) translateY(-8px); }
+            100% { opacity: 1; transform: scale(1) translateY(0); }
+        }
+
+        .result-card {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            background: white;
+            padding: 22px;
+            border-radius: 18px;
+            box-shadow: 0 6px 25px rgba(0, 0, 0, 0.08);
+            text-align: left;
+            border: 2px solid rgba(88, 116, 91, 0.18);
+        }
+
+        .result-cover {
+            width: 85px; height: 120px;
+            border-radius: 10px;
+            overflow: hidden;
+            background: var(--lighter-pink);
+            display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+
+        .result-cover i { font-size: 2.5rem; color: var(--primary-pink); }
+        .result-cover img { width: 100%; height: 100%; object-fit: cover; }
+
+        .result-info { flex: 1; }
+        .result-info h4 { font-size: 1.15rem; color: var(--dark-pink); margin-bottom: 6px; line-height: 1.3; }
+        .result-info .result-author { font-size: 0.9rem; color: var(--text-light); margin-bottom: 4px; }
+        .result-info .result-meta { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+        .result-info .result-meta span { font-size: 0.78rem; background: rgba(255,182,193,0.15); color: var(--dark-pink); padding: 4px 10px; border-radius: 20px; font-weight: 500; }
+
+        .result-magic {
+            margin-top: 18px;
+            color: var(--dark-pink);
+            font-style: italic;
+            font-size: 0.95rem;
+            font-weight: 500;
+        }
+
+        .result-magic i { margin-right: 6px; }
+
+        .pick-again-btn {
+            margin-top: 15px;
+            background: white;
+            color: var(--dark-pink);
+            border: 2px solid var(--light-pink);
+            padding: 10px 28px;
+            border-radius: 30px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            font-family: 'Poppins', sans-serif;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .pick-again-btn:hover { background: var(--lighter-pink); border-color: var(--primary-pink); transform: translateY(-2px); }
+
+
+        /* COZY READING NOOK */
+        .reading-shell { max-width: 1180px; margin: 0 auto; }
+        .welcome-panel { display:grid; grid-template-columns:1.35fr .85fr; gap:24px; align-items:center; padding:34px 38px; margin:0 auto 24px; max-width:1180px; border-radius:28px; background:linear-gradient(115deg,rgba(255,253,248,.98),rgba(238,242,231,.96)); border:1px solid rgba(128,101,82,.14); box-shadow:var(--shadow); position:relative; overflow:hidden; }
+        .welcome-panel:after { content:'❧'; position:absolute; right:28%; bottom:-44px; font-family:Georgia,serif; font-size:150px; color:rgba(128,101,82,.06); pointer-events:none; }
+        .eyebrow { text-transform:uppercase; letter-spacing:2px; font-size:.72rem; font-weight:700; color:#8b9b7f; margin-bottom:12px; }
+        .welcome-panel h2 { font-family:Georgia,'Times New Roman',serif; font-size:clamp(2rem,4vw,3.25rem); line-height:1.08; font-weight:500; color:#4c4135; max-width:560px; margin-bottom:12px; }
+        .welcome-panel p { color:#776f64; line-height:1.8; max-width:550px; }
+        .welcome-actions { display:flex; gap:10px; flex-wrap:wrap; margin-top:22px; }
+        .welcome-btn { border:0; border-radius:999px; padding:12px 20px; font:600 .9rem 'Poppins',sans-serif; cursor:pointer; transition:transform .2s,box-shadow .2s; }
+        .welcome-btn:hover { transform:translateY(-2px); box-shadow:0 8px 18px rgba(92,72,52,.12); }
+        .welcome-btn.primary { background:#58745B; color:#fffdf8; }
+        .welcome-btn.soft { background:#e2eadc; color:#4f6249; }
+        .nook-illustration { min-height:190px; display:flex; align-items:center; justify-content:center; position:relative; }
+        .nook-window { width:150px; height:160px; border:8px solid #d6c4ad; border-bottom-width:12px; border-radius:75px 75px 10px 10px; background:linear-gradient(#dfe9d9 0 54%,#f3e4d8 54%); position:relative; box-shadow:inset 0 0 0 5px rgba(255,253,248,.7); }
+        .nook-window:before { content:''; position:absolute; left:50%; top:0; bottom:0; width:5px; background:#d6c4ad; transform:translateX(-50%); }
+        .nook-window:after { content:''; position:absolute; left:0; right:0; top:53%; height:5px; background:#d6c4ad; }
+        .nook-book { position:absolute; bottom:17px; left:calc(50% - 82px); width:65px; height:85px; border-radius:5px 8px 8px 5px; background:#b6c7ad; border-left:8px solid #8fa285; transform:rotate(-9deg); box-shadow:4px 5px 10px rgba(80,65,48,.14); }
+        .nook-book:after { content:'✿'; color:#fff8ed; font-size:24px; position:absolute; top:26px; left:20px; }
+        .nook-mug { position:absolute; bottom:22px; right:calc(50% - 94px); width:54px; height:46px; background:#e9c8ce; border-radius:5px 5px 15px 15px; box-shadow:3px 5px 8px rgba(80,65,48,.1); }
+        .nook-mug:after { content:''; position:absolute; right:-13px; top:8px; width:17px; height:20px; border:5px solid #e9c8ce; border-left:0; border-radius:0 14px 14px 0; }
+        .nook-spark { position:absolute; color:#b18e6b; font-size:1.2rem; }
+        .nook-spark.one { top:20px; right:24%; } .nook-spark.two { top:50px; left:18%; font-size:.9rem; }
+        .little-note-grid { display:grid; grid-template-columns:1.15fr 1fr 1fr; gap:16px; max-width:1180px; margin:0 auto 28px; }
+        .note-card { background:rgba(255,253,248,.94); border:1px solid rgba(88,116,91,.11); border-radius:20px; padding:21px 23px; box-shadow:var(--shadow); min-height:130px; }
+        .note-card h3 { color:#58745B; font-size:.9rem; margin-bottom:10px; display:flex; align-items:center; gap:8px; }
+        .note-card p { color:#776f64; font-size:.88rem; line-height:1.7; }
+        .goal-row { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px; }
+        .goal-number { font-weight:700; color:#344D3B; }
+        .goal-controls { display:flex; align-items:center; gap:8px; margin-top:12px; }
+        .goal-controls input { max-width:86px; padding:7px 9px; font-size:.85rem; }
+        .goal-controls button { border:0; background:#dce6d8; color:#4f6249; border-radius:9px; padding:8px 11px; font:600 .78rem 'Poppins',sans-serif; cursor:pointer; }
+        .goal-track { height:8px; border-radius:99px; background:#e6e7dc; overflow:hidden; }
+        .goal-fill { height:100%; width:0; border-radius:99px; background:linear-gradient(90deg,#8FA78A,#58745B); transition:width .6s ease; }
+        .quote-card { background:#f2e5e5; }
+        .quote-card blockquote { font-family:Georgia,serif; color:#344D3B; font-size:1rem; line-height:1.55; font-style:italic; }
+        .mood-picker { display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:8px; margin:0 0 18px; }
+        .mood-picker label { width:100%; font-size:.82rem; color:#776f64; margin-bottom:0; }
+        .mood-chip { border:1px solid rgba(128,101,82,.2); border-radius:99px; background:#fffdf8; color:#344D3B; padding:7px 12px; font:500 .78rem 'Poppins',sans-serif; cursor:pointer; }
+        .mood-chip.active { background:#58745B; color:#fffdf8; border-color:#58745B; }
+        .streak-line { display:flex; align-items:center; gap:8px; color:#58745B; font-size:.8rem; margin-top:8px; }
+        .section-heading { max-width:1180px; margin:0 auto 16px; color:#344D3B; font-family:Georgia,serif; font-size:1.35rem; font-weight:500; }
+        .stat-label { letter-spacing:.7px; }
+        .tab.active::after { background:#8FA78A; }
+        .tab.active, .tab:hover { color:#344D3B; }
+        .form-title, .edit-title, .books-title { color:#58745B; }
+        .book-meta-item { background:rgba(220,230,216,.42); }
+        .book-meta-item i { color:#58745B; }
+        .reading-badge { background:linear-gradient(135deg,#8FA78A,#6f8768); box-shadow:0 3px 10px rgba(111,135,104,.22); }
+        .finished-badge { background:linear-gradient(135deg,#c79ba4,#a97783); box-shadow:0 3px 10px rgba(169,119,131,.18); }
+        .btn-primary { background:linear-gradient(135deg,#58745B,#344D3B); }
+        .btn-secondary { background:#e6ecdf; color:#53684d; }
+        .btn-edit { background:#8fa285; }
+        .btn-danger { background:#b9797d; }
+        .toast { background:#344D3B; }
+        @media (max-width:800px) { .welcome-panel { grid-template-columns:1fr; padding:28px; } .nook-illustration { min-height:170px; } .little-note-grid { grid-template-columns:1fr 1fr; } .little-note-grid .note-card:first-child { grid-column:1/-1; } }
+        @media (max-width:520px) { body { padding:12px; } .welcome-panel { padding:23px 20px; } .welcome-panel h2 { font-size:2rem; } .little-note-grid { grid-template-columns:1fr; } .little-note-grid .note-card:first-child { grid-column:auto; } .nook-illustration { display:none; } }
+
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            h1 { font-size: 2.2rem; }
+            .book-stack-icon { height: 80px; width: 80px; }
+            .book1 { width: 40px; height: 56px; top: 12px; left: 8px; }
+            .book2 { width: 44px; height: 60px; top: 8px; left: 20px; }
+            .book3 { width: 42px; height: 58px; top: 4px; left: 16px; }
+            .book4 { width: 38px; height: 54px; top: 6px; left: 28px; }
+            .stats-container { grid-template-columns: repeat(2, 1fr); gap: 15px; }
+            .form-container, .edit-mode { padding: 20px; }
+            .form-row { flex-direction: column; gap: 15px; }
+            .form-group { min-width: 100%; }
+            .form-group.half-width { max-width: 100%; }
+            .image-upload-container { flex-direction: column; align-items: center; }
+            .books-container { padding: 20px; }
+            .book-card { padding: 20px; margin-top: 15px; }
+            .book-card-main { flex-direction: column; align-items: center; text-align: center; gap: 15px; }
+            .book-info { padding: 0; width: 100%; }
+            .book-title { font-size: 20px; }
+            .book-meta-row { justify-content: center; gap: 8px; }
+            .description-section { margin-top: 25px; padding: 25px; }
+            .description-input { min-height: 100px; padding: 15px; }
+            .save-description-btn { width: 100%; }
+            .book-actions { flex-direction: column; gap: 8px; }
+            .book-actions .btn { width: 100%; }
+            .edit-header { flex-direction: column; gap: 15px; text-align: center; }
+            .edit-actions { justify-content: center; }
+            .auth-card { padding: 35px 25px; }
+            .app-header { flex-direction: column; gap: 10px; }
+            .header-actions { justify-content: center; }
+            .result-card { flex-direction: column; text-align: center; }
+            .result-info { display: flex; flex-direction: column; align-items: center; }
+            .result-info .result-meta { justify-content: center; }
+            .shuffle-btn { padding: 14px 30px; font-size: 1rem; }
+        }
+
+
+        /* EXTRA READING FUN — added without changing the existing design */
+        .extra-picker-actions { display:flex; justify-content:center; gap:10px; flex-wrap:wrap; margin-top:14px; }
+        .extra-picker-btn { background:#fffdf8; color:var(--dark-pink); border:1px solid rgba(88,116,91,.22); padding:10px 16px; border-radius:999px; font:600 .82rem 'Poppins',sans-serif; cursor:pointer; transition:all .25s; }
+        .extra-picker-btn:hover { background:#e8eee3; transform:translateY(-2px); }
+        .fun-activity-box { margin-top:20px; padding:16px; border-radius:16px; background:rgba(255,253,248,.82); border:1px dashed rgba(88,116,91,.25); display:none; }
+        .fun-activity-box.show { display:block; animation:fadeIn .35s ease; }
+        .fun-activity-title { font-weight:700; color:var(--dark-pink); margin-bottom:6px; }
+        .fun-activity-text { color:var(--text-light); font-size:.9rem; line-height:1.6; }
+
+        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration:.01ms !important; animation-iteration-count:1 !important; scroll-behavior:auto !important; transition-duration:.01ms !important; } }
+        @media (max-width: 480px) {
+            h1 { font-size: 1.8rem; }
+            .book-stack-icon { height: 60px; width: 60px; }
+            .stats-container { grid-template-columns: 1fr; }
+            .book-card { padding: 15px; }
+            .book-title { font-size: 18px; }
+            .book-meta-row { flex-direction: column; align-items: center; }
+            .book-meta-item { width: 100%; justify-content: center; }
+            .edit-actions { flex-direction: column; }
+            .edit-actions .btn { width: 100%; }
+            .random-picker { padding: 25px 20px; }
+            .picker-title { font-size: 1rem; }
+            .shuffle-text { font-size: 1.2rem; }
+        }
+ 
+       /* NEW: interactive reading mini-games */
+       .reading-games { margin:20px auto 6px; text-align:left; border:1px solid rgba(88,116,91,.2); border-radius:20px; padding:18px; background:rgba(255,253,248,.8); }
+       .reading-games summary { cursor:pointer; font-weight:700; color:#344D3B; font-size:1rem; list-style:none; display:flex; align-items:center; justify-content:space-between; }
+       .reading-games summary::-webkit-details-marker { display:none; }
+       .reading-games summary::after { content:'⌄'; font-size:1.3rem; }
+       .reading-games[open] summary::after { content:'⌃'; }
+       .games-caption { color:#73796F; font-size:.82rem; margin:8px 0 14px; }
+       .games-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; }
+       .game-btn { background:#fff; border:1px solid #d8e2d4; border-radius:13px; padding:12px; text-align:left; cursor:pointer; font:600 .82rem 'Poppins',sans-serif; color:#344D3B; transition:background .2s,transform .2s; }
+       .game-btn:hover { background:#edf3e9; transform:translateY(-2px); }
+       .game-btn small { display:block; font-size:.71rem; font-weight:400; color:#73796F; margin-top:3px; }
+       .game-output { display:none; margin-top:15px; border-radius:14px; border:1px dashed #a8b9a1; background:#f8faf5; padding:17px; text-align:center; }
+       .game-output.show { display:block; }
+       .game-output h4 { color:#344D3B; font-size:1rem; margin-bottom:7px; }
+       .game-output p { color:#5c685c; line-height:1.65; font-size:.86rem; }
+       .game-reveal { border:0; border-radius:999px; padding:9px 19px; background:#58745B; color:white; font:600 .82rem 'Poppins',sans-serif; cursor:pointer; margin-top:12px; }
+       @media(max-width:560px) { .games-grid { grid-template-columns:1fr; } .reading-games { padding:14px; } }
+       .game-mini-btn {margin:10px 5px 0;padding:9px 13px;border:1px solid #adbfaa;border-radius:12px;background:#e7eee2;color:#344D3B;cursor:pointer;font:600 .82rem Poppins,sans-serif;max-width:100%;white-space:normal;}
+       .game-mini-btn:hover {background:#d7e5d1;}
+       .game-clock {font-size:2.4rem;color:#344D3B;font-weight:700;font-variant-numeric:tabular-nums;margin:12px;}
+       .bingo-board {display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin:16px 0;}
+       .bingo-cell {margin:0;min-height:88px;font-size:.74rem;padding:9px;}
+       .bingo-cell.done {background:#58745B;color:white;}
+       .game-note {width:100%;min-height:100px;margin-top:12px;}
+       @media(max-width:480px){.bingo-cell{font-size:.68rem;padding:5px;min-height:80px;}}
+
+/* Reading studio: a calm, intentionally small activity selector */
+.reading-games{display:block;margin:6px 0 28px;padding:26px!important;border:1px solid #dce5d7!important;border-radius:24px!important;background:#fffefa!important;text-align:left;box-shadow:0 6px 22px rgba(52,77,59,.045)}
+.studio-heading{display:flex;justify-content:space-between;align-items:center;gap:14px;margin-bottom:22px}
+.studio-kicker{display:block;letter-spacing:2px;font-size:.68rem;font-weight:700;color:#899a83;margin-bottom:8px}
+.studio-heading h3{font:500 clamp(1.5rem,3vw,2.1rem) Georgia,serif;color:#344D3B;margin:0 0 8px}
+.studio-heading p{color:#7a8176;font-size:.84rem;line-height:1.6;max-width:480px}
+.studio-illustration{display:grid;place-items:center;background:#eaf0e6;border-radius:50%;width:70px;height:70px;font-size:2rem;flex-shrink:0}
+.studio-filters{display:flex;flex-wrap:wrap;gap:7px;border-bottom:1px solid #e8eee5;padding-bottom:18px}
+.studio-filter{padding:9px 14px;background:#f4f6ef;color:#63745f;border:1px solid transparent;border-radius:999px;font:500 .79rem Poppins,sans-serif;cursor:pointer;transition:.2s}
+.studio-filter.active{background:#58745B;color:#fff;box-shadow:0 3px 10px #58745b20}
+.studio-filter:hover:not(.active){background:#e6eee2}
+.studio-section-label{display:flex;justify-content:space-between;align-items:center;gap:8px;margin:20px 0 13px;font-size:.87rem;color:#465f47;font-weight:600}
+.studio-section-label span:last-child{color:#8b9789;font-size:.73rem;font-weight:400}
+.games-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.game-btn{display:none;min-height:80px;background:#fbfcf8;border:1px solid #e6ece2;border-radius:16px;padding:14px 16px;font-size:.86rem;font-weight:600;box-shadow:none}
+.game-btn.studio-visible{display:block}
+.game-btn small{line-height:1.5;margin-top:5px;color:#849084;font-size:.72rem}
+.game-output{background:#f4f8f0;border:1px solid #dfe9d8;text-align:left;padding:20px;margin-top:18px}
+.studio-footnote{color:#95a092;font-size:.73rem;line-height:1.6;margin-top:16px;text-align:center}
+.daily-inspiration{border-top:1px solid #e4eade;margin-top:18px;padding-top:16px}
+.daily-inspiration summary{cursor:pointer;font-size:.82rem;color:#58745B;font-weight:600;list-style:none}
+.daily-inspiration summary span{font-size:.73rem;color:#92a18d;font-weight:400;margin-left:6px}
+.daily-inspiration .extra-picker-actions{margin-top:12px}
+.random-picker{padding:25px 22px}
+.random-picker .picker-subtitle{margin-bottom:14px}
+.random-picker .shuffle-btn{font-size:.94rem;padding:12px 27px;box-shadow:0 5px 14px #344d3b19}
+#emptyShelfHint{padding:10px 12px;background:#edf3e9;border-radius:12px;font-size:.77rem!important}
+@media(max-width:600px){.reading-games{padding:18px!important}.studio-illustration{width:50px;height:50px;font-size:1.5rem}.studio-filter{font-size:.74rem;padding:8px 10px}.games-grid{grid-template-columns:1fr}.game-btn{min-height:64px}.studio-heading h3{font-size:1.5rem}}
+
+
+/* Calmer layout: one main picker, optional game drawer. */
+.reading-activities-drawer{background:#fffefa;border:1px solid #dfe7d9;border-radius:22px;margin:18px 0 32px;box-shadow:0 5px 18px rgba(52,77,59,.05);overflow:hidden}
+.reading-activities-drawer>summary{display:flex;align-items:center;gap:15px;padding:20px 23px;cursor:pointer;list-style:none;text-align:left;user-select:none}
+.reading-activities-drawer>summary::-webkit-details-marker{display:none}
+.drawer-icon{display:grid;place-items:center;flex-shrink:0;width:44px;height:44px;border-radius:14px;background:#e9efe5;color:#58745B;font-size:1.4rem}
+.drawer-copy{display:flex;flex-direction:column;gap:3px;min-width:0;flex:1}
+.drawer-copy strong{color:#344D3B;font:500 1.2rem Georgia,serif}
+.drawer-copy small{color:#899184;font-size:.75rem;font-weight:400;line-height:1.55}
+.drawer-chevron{color:#71846f;font-size:1.4rem;transition:transform .2s}
+.reading-activities-drawer[open] .drawer-chevron{transform:rotate(180deg)}
+.reading-activities-drawer[open]>summary{border-bottom:1px solid #eef1e9}
+.reading-activities-drawer .reading-games{border:0!important;box-shadow:none;background:transparent!important;margin:0;padding:22px!important;border-radius:0!important}
+.reading-activities-drawer .studio-heading{margin-bottom:17px}
+.reading-activities-drawer .studio-illustration{display:none}
+.reading-activities-drawer .studio-heading h3{font-size:1.5rem}
+.reading-activities-drawer .studio-heading p{font-size:.8rem}
+.reading-activities-drawer .game-btn{min-height:68px}
+.reading-activities-drawer .game-btn:hover{background:#f1f6ed;border-color:#cddfc9}
+.random-picker{background:linear-gradient(145deg,#f8faf4,#f4f4eb 65%,#f7eeee);border:1px solid #e2e7db;box-shadow:0 5px 18px rgba(52,77,59,.05);padding:25px 24px;margin-bottom:0}
+.random-picker::before{background:#8ea88e;animation:none;height:3px}
+.random-picker:hover{box-shadow:0 5px 18px rgba(52,77,59,.05);border-color:#d8e1d3}
+#emptyShelfHint{max-width:460px!important;margin-bottom:18px!important}
+@media(max-width:600px){.reading-activities-drawer>summary{padding:16px}.reading-activities-drawer .reading-games{padding:16px!important}.drawer-copy strong{font-size:1.1rem}}
+
+
+/* Want to Buy — intentionally minimal to match the reading shelf */
+.wishlist-top {display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;margin-bottom:18px}
+.wishlist-top h3 {font-family:Georgia,serif;color:#344D3B;font-size:1.35rem;font-weight:500}
+.wishlist-top p {color:#73796F;font-size:.85rem;margin-top:5px}
+.wish-add-btn,.wish-save,.wish-cancel,.wish-small,.library-backup-btn {font-family:'Poppins',sans-serif;cursor:pointer;border-radius:10px;border:1px solid rgba(88,116,91,.18);padding:9px 15px;font-weight:600;font-size:.82rem}
+.wish-add-btn,.wish-save {background:#58745B;color:white}
+.wish-cancel,.wish-small,.library-backup-btn {background:#edf1e9;color:#344D3B}
+.wishlist-form {display:none;background:#faf9f4;border:1px solid #dce6d8;border-radius:18px;padding:20px;margin:0 0 20px}
+.wishlist-form.open {display:block}
+.wishlist-form h4 {color:#344D3B;margin-bottom:15px}
+.wish-fields {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:13px}
+.wish-fields label {font-size:.83rem}
+.wish-fields .wide {grid-column:1/-1}
+.wish-fields input,.wish-fields textarea,.wish-fields select {font-size:.9rem;padding:10px;border:1px solid #cedbcb}
+.wish-form-actions {display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.wish-list {display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
+.wish-card {border:1px solid rgba(88,116,91,.15);border-radius:17px;background:#fffdf8;padding:17px;display:flex;gap:15px;min-width:0}
+.wish-cover {width:82px;height:116px;flex:none;border-radius:9px;background:#e6ecdf;overflow:hidden;display:flex;align-items:center;justify-content:center;color:#58745B;font-size:1.6rem}
+.wish-cover img {width:100%;height:100%;object-fit:cover}
+.wish-content {flex:1;min-width:0}
+.wish-content h4 {font-size:1rem;color:#344D3B;overflow-wrap:anywhere}
+.wish-content p {font-size:.8rem;color:#73796F;margin-top:4px;overflow-wrap:anywhere}
+.wish-price {color:#58745B!important;font-weight:700}
+.wish-actions {display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+.wish-small {padding:6px 10px;font-size:.73rem}
+.wish-empty {grid-column:1/-1;text-align:center;padding:35px 15px;color:#73796F;background:#faf9f4;border:1px dashed #cddcca;border-radius:16px}
+.backup-bar {max-width:1180px;margin:16px auto 8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.backup-bar span {font-size:.76rem;color:#73796F;margin-right:auto}
+@media(max-width:700px){.wish-list,.wish-fields{grid-template-columns:1fr}.wish-fields .wide{grid-column:auto}.wish-card{padding:13px}.backup-bar{justify-content:flex-start}}
+
+
+/* COZY MUSIC NOOK — self-contained, no modification of library storage */
+.music-nook{max-width:1180px;margin:0 auto 24px;background:#fffdf8;border:1px solid #dce6d8;border-radius:22px;padding:19px 23px;box-shadow:0 7px 24px rgba(52,77,59,.07)}
+.music-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.music-name{font:500 1.36rem Georgia,serif;color:#344D3B;margin:0 0 4px}.music-sub{font-size:.8rem;color:#73796f;margin:0}
+.music-toggle{padding:9px 17px;border-radius:25px;background:#e6ecdf;border:0;color:#344D3B;cursor:pointer;font-weight:600}
+.music-player{display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:16px;padding:13px 15px;border-radius:16px;background:#f2f3e9;flex-wrap:wrap}
+.music-playing{flex:1;min-width:170px}.music-current{font-weight:700;color:#344D3B;font-size:.92rem}.music-artist{font-size:.78rem;color:#73796f;margin-top:3px}.music-controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.music-controls button,.music-tool{border:1px solid #dce6d8;background:#fffdf8;color:#344D3B;border-radius:24px;padding:8px 12px;cursor:pointer;font:600 .81rem Poppins,sans-serif}
+.music-controls button:hover,.music-tool:hover,.music-toggle:hover{background:#dce6d8}.music-controls .music-play{background:#58745B;color:white;border-color:#58745B}
+.music-tools{display:flex;gap:9px;align-items:center;flex-wrap:wrap;margin-top:12px}.music-tools label{font-size:.78rem;margin:0;color:#73796f}.music-tools input[type=range]{width:88px;padding:0;border:0;box-shadow:none}.music-tools select{width:auto;padding:7px 10px;font-size:.8rem;border:1px solid #dce6d8}
+.music-expand{margin-top:13px}.music-help{font-size:.76rem;color:#73796f;line-height:1.65;margin:10px 0}.music-list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;max-height:310px;overflow:auto;margin-top:12px}
+.music-track{display:flex;align-items:center;gap:11px;text-align:left;border:1px solid #eceee5;border-radius:11px;padding:9px 11px;background:#fff;cursor:pointer;min-width:0;color:#344D3B}.music-track.active{border-color:#8fa285;background:#eff3eb}.music-track:hover{background:#f2f3e9}.music-num{font-size:.71rem;color:#8fa285;min-width:24px}.music-track-title{font-weight:600;font-size:.8rem}.music-track-artist{font-size:.72rem;color:#73796f}.music-track-text{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.music-track-text div{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.music-search{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}.music-search input{flex:1;min-width:170px;font-size:.8rem;padding:9px;border:1px solid #dce6d8}
+.music-empty{color:#73796f;font-size:.8rem}.music-upload{display:inline-flex;align-items:center;justify-content:center;cursor:pointer!important;margin:0!important;color:#344D3B!important}.music-file-input{position:absolute;width:1px;height:1px;opacity:0;overflow:hidden;clip-path:inset(50%)}.music-upload:focus-within{outline:2px solid #58745B}.music-progress{width:100%;accent-color:#58745B;margin-top:9px;padding:0!important}.music-availability{font-size:.72rem;color:#5c755d;margin-top:4px}.music-track{justify-content:space-between}.music-remove{flex-shrink:0;padding:4px 7px;border:1px solid #efd4d4;background:#fff9f9;border-radius:7px;color:#995955;cursor:pointer}.music-tip{font-size:.78rem;color:#586b57}.music-note{font-size:.75rem;color:#73796f;margin-top:9px}
+@media(max-width:650px){.music-list{grid-template-columns:1fr}.music-nook{padding:16px}.music-player{align-items:flex-start}}
+
+           /* Sharp, uncropped book covers with a book-like portrait ratio. */
+        .book-cover { width:150px; height:220px; background:#f5f2e9; }
+        .book-cover img, .result-cover img, .wish-cover img, .image-preview img { object-fit:contain; image-rendering:auto; }
+        .result-cover { width:105px; height:155px; }
+        .image-preview { width:120px; height:176px; }
+        .wish-cover { width:100px; height:145px; background:#f5f2e9; }
+        @media (max-width:600px) { .book-cover { width:140px; height:205px; } }
+</style>
+</head>
+<body>
+
+    <!-- APP -->
+    <div class="app-screen" id="appScreen">
+        <div class="app-header">
+            <div class="user-badge"><div class="user-avatar"><i class="fas fa-book-open"></i></div><span class="user-name">YOUR PERSONAL LIBRARY</span></div>
+            <div class="header-actions"><span class="header-note"><i class="fas fa-leaf"></i> a little space for stories</span></div>
+        </div>
+
+        <header>
+            <div class="header-title">
+                <div class="book-stack-icon"><div class="book book1"></div><div class="book book2"></div><div class="book book3"></div><div class="book book4"></div></div>
+                <h1>my little library</h1>
+            </div>
+            <p class="subtitle">a quiet little corner for the stories you love</p>
+            <div class="decorative-dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+        </header>
+
+        <section class="welcome-panel">
+            <div>
+                <div class="eyebrow">☕ your personal reading nook</div>
+                <h2 id="welcomeHeadline">Slow down. Turn a page.</h2>
+                <p id="welcomeMessage">Your next favorite story might be waiting on your shelf. Make yourself comfortable and read a little.</p>
+                <div class="welcome-actions">
+                    <button class="welcome-btn primary" onclick="switchTab('reading'); document.getElementById('booksArea').scrollIntoView({behavior:'smooth'});">Find my next book <span>✦</span></button>
+                    <button class="welcome-btn soft" onclick="document.getElementById('formContainer').scrollIntoView({behavior:'smooth'});">Add to my shelf +</button>
+                    <button class="welcome-btn soft" onclick="openReadingGames()">✦ Reading games</button>
+                </div>
+            </div>
+            <div class="nook-illustration" aria-hidden="true"><span class="nook-spark one">✦</span><span class="nook-spark two">✧</span><div class="nook-window"></div><div class="nook-book"></div><div class="nook-mug"></div></div>
+        </section>
+
+
+        <section class="music-nook" aria-label="Cozy music player">
+          <div class="music-head">
+            <div><div class="music-name">♫ A little soundtrack for your stories</div><p class="music-sub">soft songs for reading, writing & slow afternoons</p></div>
+            <button class="music-toggle" type="button" onclick="toggleMusicDetails()" id="musicToggle">My music ▾</button>
+          </div>
+          <div class="music-player">
+            <div class="music-playing"><div class="music-current" id="musicCurrent">No music added yet</div><div class="music-artist" id="musicArtist">Add MP3 files to create your playlist</div></div>
+            <div class="music-controls"><button type="button" onclick="musicPrev()" aria-label="Previous song">◀◀</button><button type="button" class="music-play" onclick="musicPlayPause()" id="musicPlay">▶ Play</button><button type="button" onclick="musicNext()" aria-label="Next song">▶▶</button></div>
+          </div>
+          <input class="music-progress" id="musicProgress" aria-label="Song position" type="range" min="0" max="1000" value="0" oninput="musicSeek(this.value)">
+          <div class="music-tools">
+            <label for="musicVolume">Volume</label><input id="musicVolume" type="range" min="0" max="100" value="35" oninput="musicSetVolume(this.value)">
+            <button class="music-tool" type="button" id="musicShuffle" onclick="musicToggleShuffle()">⇄ Shuffle off</button>
+            <button class="music-tool" type="button" id="musicRepeat" onclick="musicToggleRepeat()">↻ Repeat all</button>
+            <label class="music-tool music-upload" for="musicFiles">＋ Add your MP3 / audio</label>
+            <input id="musicFiles" class="music-file-input" type="file" accept="audio/*,.mp3,.m4a,.wav,.ogg,.flac" multiple onchange="musicLoadFiles(event)">
+          </div>
+          <p class="music-note" id="musicStatus">Add your own MP3 files to start your cozy playlist.</p>
+          <div class="music-expand" id="musicExpand" hidden>
+            <p class="music-help">Your personal playlist contains only the audio files you upload. Browsers generally need you to press Play before starting music.</p>
+            <div class="music-search"><input id="musicSearch" type="search" placeholder="Search your music…" oninput="musicRenderList()" aria-label="Search cozy playlist"></div>
+            <div class="music-list" id="musicList"></div>
+            <p class="music-note">Uploaded audio is saved in this browser when storage is available. It is not part of the library JSON backup. Keep copies of your audio files. Your book collection is stored separately.</p>
+          </div>
+          <audio id="cozyAudio" preload="none"></audio>
+        </section>
+
+        <div class="little-note-grid">
+            <section class="note-card">
+                <h3><i class="fas fa-seedling"></i> A little reading goal</h3>
+                <div class="goal-row"><span id="goalCaption">Your yearly shelf</span><span class="goal-number"><span id="goalFinished">0</span> / <span id="goalTargetLabel">12</span></span></div>
+                <div class="goal-track"><div class="goal-fill" id="goalFill"></div></div>
+                <div class="goal-controls"><label for="readingGoal" style="font-size:.78rem;margin:0">Books to finish this year</label><input id="readingGoal" type="number" min="1" max="365" value="12"><button onclick="saveReadingGoal()">Set goal</button></div>
+            </section>
+            <section class="note-card">
+                <h3><i class="fas fa-sun"></i> A note for today</h3>
+                <p id="dailyNote">A warm drink, a quiet moment, and a few pages. You do not have to rush a good story.</p>
+                <div class="streak-line"><i class="fas fa-fire"></i> <span id="streakDisplay">Your reading journey starts one page at a time.</span></div>
+            </section>
+            <section class="note-card quote-card">
+                <h3><i class="fas fa-quote-left"></i> A little bookish thought</h3>
+                <blockquote id="quoteOfDay">“There is no friend as loyal as a book.”</blockquote>
+                <p style="margin-top:8px;font-size:.75rem">A tiny reminder to make room for stories.</p>
+            </section>
+        </div>
+
+        <h2 class="section-heading">Your reading shelf, at a glance</h2>
+        <div class="stats-container">
+            <div class="stat-box"><div class="stat-number" id="totalBooks">0</div><div class="stat-label">On My Shelf</div></div>
+            <div class="stat-box"><div class="stat-number" id="finishedBooks">0</div><div class="stat-label">Finished</div></div>
+            <div class="stat-box"><div class="stat-number" id="currentlyReading">0</div><div class="stat-label">Currently Reading</div></div>
+            <div class="stat-box"><div class="stat-number" id="avgRating">0</div><div class="stat-label">Average Rating</div></div>
+        </div>
+
+        <div class="edit-mode" id="editMode">
+            <div class="edit-header">
+                <h2 class="edit-title"><i class="fas fa-edit"></i> Edit Book</h2>
+                <div class="edit-actions">
+                    <button type="button" class="btn btn-secondary" onclick="cancelEdit()"><i class="fas fa-times"></i> Cancel</button>
+                    <button type="button" class="btn btn-primary" onclick="saveEdit()" style="width:auto"><i class="fas fa-save"></i> Save</button>
+                </div>
+            </div>
+            <form id="editForm">
+                <div class="form-row">
+                    <div class="form-group half-width"><label>Book Cover</label><div class="image-upload-container"><div class="image-preview" id="editImagePreview"><i class="fas fa-book"></i></div><div class="image-input-group"><input type="text" id="editBookCover" placeholder="Paste image URL"><button type="button" class="image-upload-btn" onclick="document.getElementById('editFileInput').click()"><i class="fas fa-upload"></i> Upload</button><span class="image-size-hint">High-quality cover upload · up to 800px wide</span><input type="file" id="editFileInput" accept="image/*" style="display:none" onchange="handleEditFileUpload(event)"></div></div></div>
+                    <div class="form-group half-width"><label>Book Name</label><input type="text" id="editBookName" required></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group half-width"><label>Author</label><input type="text" id="editAuthor"></div>
+                    <div class="form-group half-width"><label>Genre</label><select id="editGenre"><option value="">Select genre</option><option value="Fiction">Fiction</option><option value="Non-Fiction">Non-Fiction</option><option value="Mystery">Mystery</option><option value="Romance">Romance</option><option value="Sci-Fi">Sci-Fi</option><option value="Fantasy">Fantasy</option><option value="Biography">Biography</option><option value="Self-Help">Self-Help</option><option value="Other">Other</option></select></div>
+                </div>
+                <div class="form-row"><div class="form-group half-width"><label>Start Date</label><input type="date" id="editStartDate"></div><div class="form-group half-width"><label>End Date</label><input type="date" id="editEndDate"></div></div>
+                <div class="form-row"><div class="form-group half-width"><label>Page Count (optional)</label><input type="number" id="editPages" min="1" placeholder="e.g. 240"></div><div class="form-group half-width"><label>Progress (%)</label><input type="number" id="editProgress" min="0" max="100"></div></div>
+                <div class="form-row">
+                    <div class="form-group half-width"><label>Rating</label><div class="rating-container" id="editRatingContainer"><span class="star" data-rating="1"><i class="fas fa-star"></i></span><span class="star" data-rating="2"><i class="fas fa-star"></i></span><span class="star" data-rating="3"><i class="fas fa-star"></i></span><span class="star" data-rating="4"><i class="fas fa-star"></i></span><span class="star" data-rating="5"><i class="fas fa-star"></i></span></div></div>
+                </div>
+                <div class="form-row"><div class="form-group full-width"><label>How do you feel?</label><textarea id="editFeeling"></textarea></div></div>
+            </form>
+        </div>
+
+        <div class="form-container" id="formContainer">
+            <h2 class="form-title"><i class="fas fa-book-medical"></i> Add New Book</h2>
+            <form id="bookForm">
+                <div class="form-row">
+                    <div class="form-group half-width"><label>Book Cover</label><div class="image-upload-container"><div class="image-preview" id="imagePreview"><i class="fas fa-book"></i></div><div class="image-input-group"><input type="text" id="bookCover" placeholder="Paste image URL"><button type="button" class="image-upload-btn" onclick="document.getElementById('fileInput').click()"><i class="fas fa-upload"></i> Upload</button><span class="image-size-hint">High-quality cover upload · up to 800px wide</span><input type="file" id="fileInput" accept="image/*" style="display:none" onchange="handleFileUpload(event)"></div></div></div>
+                    <div class="form-group half-width"><label>Book Name</label><input type="text" id="bookName" required></div>
+                </div>
+                <div class="form-row">
+                    <div class="form-group half-width"><label>Author</label><input type="text" id="author"></div>
+                    <div class="form-group half-width"><label>Genre</label><select id="genre"><option value="Fiction">Fiction</option><option value="Mystery">Mystery</option><option value="Romance">Romance</option><option value="Fantasy">Fantasy</option><option value="Dark Romance">Dark Romance</option><option value="Boylove">Boylove</option><option value="Other">Other</option></select></div>
+                </div>
+                <div class="form-row"><div class="form-group half-width"><label>Start Date</label><input type="date" id="startDate"></div><div class="form-group half-width"><label>End Date</label><input type="date" id="endDate"></div></div>
+                <div class="form-row"><div class="form-group half-width"><label>Page Count (optional)</label><input type="number" id="pages" min="1" placeholder="e.g. 240"></div><div class="form-group half-width"><label>Progress (%)</label><input type="number" id="progress" min="0" max="100"></div></div>
+                <div class="form-row">
+                    <div class="form-group half-width"><label>Rating</label><div class="rating-container" id="ratingContainer"><span class="star" data-rating="1"><i class="fas fa-star"></i></span><span class="star" data-rating="2"><i class="fas fa-star"></i></span><span class="star" data-rating="3"><i class="fas fa-star"></i></span><span class="star" data-rating="4"><i class="fas fa-star"></i></span><span class="star" data-rating="5"><i class="fas fa-star"></i></span></div></div>
+                </div>
+                <div class="form-row"><div class="form-group full-width"><label>How do you feel?</label><textarea id="feeling"></textarea></div></div>
+                <button type="submit" class="btn btn-primary"><i class="fas fa-plus-circle"></i> Add Book</button>
+            </form>
+        </div>
+
+        <div class="backup-bar"><span>🌿 Keep your books safe when updating this page</span><button type="button" class="library-backup-btn" onclick="exportLibraryBackup()">↓ Export backup</button><button type="button" class="library-backup-btn" onclick="document.getElementById('backupImportFile').click()">↑ Import backup</button><input type="file" id="backupImportFile" accept="application/json,.json" style="display:none" onchange="importLibraryBackup(event)"></div>
+        <div class="books-container" id="booksArea">
+            <div class="tabs">
+                <button class="tab active" data-tab="all">All Books</button>
+                <button class="tab" data-tab="reading">Currently Reading</button>
+                <button class="tab" data-tab="finished">Finished Books</button>
+                <button class="tab" data-tab="wishlist">♡ Want to Buy <span id="wishTabCount"></span></button>
+            </div>
+            <div class="tab-content active" id="all"><div class="books-list" id="allBooksList"><div class="empty-state"><i class="fas fa-book-reader"></i><p>No books yet.</p></div></div></div>
+            <div class="tab-content" id="reading">
+                <!-- RANDOM PICKER HERE -->
+                <div class="random-picker" id="randomPicker" style="display:block">
+                    <div class="picker-title"><i class="fas fa-magic"></i> What shall we read today?</div>
+                    <div class="picker-subtitle">A little surprise from your shelf <span class="picker-count" id="pickerCount">0 books</span></div>
+                    <p id="emptyShelfHint" class="games-caption" style="display:block;margin:0 auto 16px;max-width:530px">🌱 Your shelf is empty. You can explore the games now! Add an unfinished book to enable book-picking activities.</p>
+
+
+                    <div class="mood-picker" id="moodPicker">
+                        <label>What are you in the mood for?</label>
+                        <button type="button" class="mood-chip active" data-mood="Any" onclick="setBookMood('Any',this)">Anything ✨</button>
+                        <button type="button" class="mood-chip" data-mood="Cozy" onclick="setBookMood('Cozy',this)">Cozy ☕</button>
+                        <button type="button" class="mood-chip" data-mood="Mystery" onclick="setBookMood('Mystery',this)">Mystery 🔎</button>
+                        <button type="button" class="mood-chip" data-mood="Romance" onclick="setBookMood('Romance',this)">Romance 🌷</button>
+                        <button type="button" class="mood-chip" data-mood="Fantasy" onclick="setBookMood('Fantasy',this)">Fantasy ✨</button>
+                        <button type="button" class="mood-chip" data-mood="Short Read" onclick="setBookMood('Short Read',this)">Short read 🍃</button>
+                    </div>
+                    <button class="shuffle-btn" id="shuffleBtn" onclick="pickRandomBook()">
+                        <span class="btn-sparkle"></span>
+                        <i class="fas fa-dice"></i> Surprise me!
+                    </button>
+
+                    <details class="daily-inspiration"><summary>✨ Daily inspiration <span>4 gentle ideas</span></summary>
+                    <div class="extra-picker-actions">
+                        <button type="button" class="extra-picker-btn" onclick="pickWhatShouldIRead()"><i class="fas fa-book-open"></i> What should I read next?</button>
+                        <button type="button" class="extra-picker-btn" onclick="pickUniverseBook()"><i class="fas fa-star"></i> Let the universe choose</button>
+                        <button type="button" class="extra-picker-btn" onclick="luckyBookOfTheDay()"><i class="fas fa-clover"></i> Lucky book of the day</button>
+                        <button type="button" class="extra-picker-btn" onclick="giveReadingChallenge()"><i class="fas fa-wand-magic-sparkles"></i> Fun reading challenge</button>
+                    </div>
+
+ 
+                    </details>
+
+                   <div class="fun-activity-box" id="funActivityBox">
+                        <div class="fun-activity-title" id="funActivityTitle"></div>
+                        <div class="fun-activity-text" id="funActivityText"></div>
+                    </div>
+
+                    <div class="shuffle-text" id="shuffleText"></div>
+                    <div class="random-result" id="randomResult">
+                        <div id="resultContent"></div>
+                        <button class="pick-again-btn" onclick="pickRandomBook()"><i class="fas fa-redo"></i> Not in the mood? Try another</button>
+                    </div>
+                </div>
+                <details class="reading-activities-drawer" id="readingActivitiesDrawer">
+                    <summary><span class="drawer-icon">✦</span><span class="drawer-copy"><strong>Reading playground</strong><small>20 optional little games · Pick, play, and unwind</small></span><span class="drawer-chevron">⌄</span></summary>
+                   <section class="reading-games" id="readingGames" aria-label="Reading games">
+                       <div class="studio-heading"><div><span class="studio-kicker">YOUR READING PLAYGROUND</span><h3>Little moments, big stories ✨</h3><p>Choose a mood for your reading break. One little activity at a time.</p></div><span class="studio-illustration" aria-hidden="true">📖</span></div>
+                       <div class="studio-filters" role="group" aria-label="Game categories">
+                         <button type="button" class="studio-filter active" data-filter="pick" onclick="setGameCategory('pick')">📚 Pick a book</button>
+                         <button type="button" class="studio-filter" data-filter="quick" onclick="setGameCategory('quick')">🎲 Lucky picks</button>
+                         <button type="button" class="studio-filter" data-filter="challenge" onclick="setGameCategory('challenge')">🌼 Challenges</button>
+                         <button type="button" class="studio-filter" data-filter="focus" onclick="setGameCategory('focus')">☕ Cozy time</button>
+                       </div>
+                       <div class="studio-section-label"><span id="studioCategoryTitle">Choose your next story</span><span id="studioGameCount">6 activities</span></div>
+                       <div class="games-grid" id="studioGamesGrid">
+                           <button type="button" class="game-btn" data-category="pick" onclick="playReadingGame('genre')">🎡 Spin a Genre<small>Let a genre pick your next story</small></button>
+                           <button type="button" class="game-btn" data-category="quick" onclick="playReadingGame('dice')">🎲 Page Dice<small>Roll your page target</small></button>
+                           <button type="button" class="game-btn" data-category="quick" onclick="playReadingGame('blind')">🙈 Blind Cover Pick<small>Reveal a mystery book</small></button>
+                           <button type="button" class="game-btn" data-category="challenge" onclick="playReadingGame('quest')">🗺️ Reading Quest<small>Find your mission for today</small></button>
+                           <button type="button" class="game-btn" data-category="challenge" onclick="playReadingGame('firstline')">💬 First-Line Challenge<small>Give the next chapter a try</small></button>
+                           <button type="button" class="game-btn" data-category="challenge" onclick="playReadingGame('dare')">⚡ Book Dare<small>A small brave bookish challenge</small></button>
+                           <button type="button" class="game-btn" data-category="quick" onclick="playReadingGame('coin')">🪙 Shelf Coin Flip<small>Heads or tails between two books</small></button>
+                           <button type="button" class="game-btn" data-category="challenge" onclick="playReadingGame('reward')">🎁 Reading Reward<small>Earn a cozy little treat</small></button>
+                           <button type="button" class="game-btn" data-category="focus" onclick="playExtraGame('timer')">⏳ Cozy Reading Timer<small>Start a 5, 10, 15 or 25-minute focus session</small></button>
+                           <button type="button" class="game-btn" data-category="challenge" onclick="playExtraGame('bingo')">🌼 Reading Bingo<small>Complete a 3 × 3 cozy challenge card</small></button>
+                           <button type="button" class="game-btn" data-category="pick" onclick="playExtraGame('tournament')">🏆 Book Battle<small>Choose between two contenders</small></button>
+                           <button type="button" class="game-btn" data-category="quick" onclick="playExtraGame('alphabet')">🔤 Alphabet Hunt<small>Find a book with a matching letter</small></button>
+                           <button type="button" class="game-btn" data-category="focus" onclick="playExtraGame('speeddate')">💌 Book Speed Date<small>Give a surprise book just five minutes</small></button>
+                           <button type="button" class="game-btn" data-category="challenge" onclick="playExtraGame('prompt')">🫙 Story Prompt Jar<small>Reflect on what you are reading</small></button>
+                           <button type="button" class="game-btn" data-category="pick" onclick="playExtraGame('weekend')">🌤️ Weekend Companion<small>Choose a weekend reading buddy</small></button>
+                           <button type="button" class="game-btn" data-category="focus" onclick="playExtraGame('tiny')">🌱 Tiny Steps<small>Pick a one-minute reading goal</small></button>
+                           <button type="button" class="game-btn" data-category="challenge" onclick="playExtraGame('detective')">🕵️ Book Detective<small>Investigate a new detail in your story</small></button>
+                           <button type="button" class="game-btn" data-category="quick" onclick="playExtraGame('fortune')">🥠 Reading Fortune<small>Reveal a playful bookish fortune</small></button>
+                           <button type="button" class="game-btn" data-category="pick" onclick="playExtraGame('pair')">👯 Double Feature<small>Pair two different unfinished books</small></button>
+                           <button type="button" class="game-btn" data-category="focus" onclick="playExtraGame('bookmark')">🔖 Bookmark Moment<small>Save a thought about your reading</small></button>
+                       </div>
+                       <div class="game-output" id="readingGameOutput" aria-live="polite"></div>
+                       <p class="studio-footnote">Some games choose from your unfinished shelf. Add a book to unlock those picks. 🌿</p>
+                   </section>
+                </details>
+                <h3 class="books-title"><i class="fas fa-book-open"></i> Currently Reading</h3>
+                <div class="books-list" id="readingBooksList"><div class="empty-state"><i class="fas fa-book"></i><p>No books being read.</p></div></div>
+            </div>
+            <div class="tab-content" id="finished"><h3 class="books-title"><i class="fas fa-trophy"></i> Finished</h3><div class="books-list" id="finishedBooksList"><div class="empty-state"><i class="fas fa-award"></i><p>No finished books.</p></div></div></div>
+            <div class="tab-content" id="wishlist">
+                <div class="wishlist-top"><div><h3>♡ Books I Want to Buy</h3><p>A little wishlist for stories you hope to bring home.</p></div><button type="button" class="wish-add-btn" onclick="toggleWishForm(true)">+ Add a wishlist book</button></div>
+                <form class="wishlist-form" id="wishlistForm" onsubmit="saveWish(event)">
+                    <h4 id="wishFormTitle">Add to my wishlist</h4>
+                    <div class="wish-fields">
+                        <div><label for="wishName">Book title *</label><input id="wishName" required maxlength="240" placeholder="Your next dream book"></div>
+                        <div><label for="wishAuthor">Author</label><input id="wishAuthor" maxlength="200" placeholder="Optional"></div>
+                        <div><label for="wishCover">Cover image URL</label><input id="wishCover" type="url" placeholder="https://..."></div>
+                        <div><label for="wishPrice">Estimated price (USD)</label><input id="wishPrice" type="number" min="0" step="0.01" placeholder="Optional"></div>
+                        <div class="wide"><label for="wishLink">Where to buy (URL)</label><input id="wishLink" type="url" placeholder="https://..."></div>
+                        <div class="wide"><label for="wishNote">Why I want this book</label><textarea id="wishNote" rows="2" maxlength="1000" placeholder="A few words about why it caught your eye..."></textarea></div>
+                    </div>
+                    <div class="wish-form-actions"><button type="submit" class="wish-save">Save to wishlist</button><button type="button" class="wish-cancel" onclick="toggleWishForm(false)">Cancel</button></div>
+                </form>
+                <div id="wishList" class="wish-list" aria-live="polite"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast"></div>
+
+    <script>
+    const firebaseConfig = {
+        apiKey: "YOUR_API_KEY",
+        authDomain: "YOUR_PROJECT.firebaseapp.com",
+        databaseURL: "https://YOUR_PROJECT-default-rtdb.firebaseio.com",
+        projectId: "YOUR_PROJECT",
+        storageBucket: "YOUR_PROJECT.appspot.com",
+        messagingSenderId: "YOUR_SENDER_ID",
+        appId: "YOUR_APP_ID"
+    };
+
+    var db = null, firebaseReady = false;
+    try {
+        if (firebaseConfig.apiKey !== "YOUR_API_KEY") {
+            firebase.initializeApp(firebaseConfig);
+            db = firebase.database();
+            firebaseReady = true;
+            db.ref('.info/connected').on('value', function(s) { updateSyncUI(s.val() === true ? 'online' : 'offline'); });
+        }
+    } catch (e) { firebaseReady = false; }
+
+    function updateSyncUI(st) {
+        var d = document.getElementById('syncDot'), l = document.getElementById('syncLabel');
+        if (!d || !l) return;
+        d.className = 'sync-dot ' + st; l.className = 'sync-label ' + st;
+        if (st === 'online') l.textContent = 'Cloud synced — all devices share data';
+        else if (st === 'offline') l.textContent = 'Offline — cached data, syncs when connected';
+        else l.textContent = 'Local only — add Firebase config for cloud sync';
+    }
+
+    // SINGLE-USER MODE — no login or registration required
+    var currentUser = null;
+    function getBookKey(un) { return "reading_books_" + String(un || "reader").toLowerCase(); }
+    function migrateOldBooks(username) {
+        var old = localStorage.getItem("books");
+        if (!old) return;
+        try {
+            var ob = JSON.parse(old);
+            if (Array.isArray(ob) && ob.length && !localStorage.getItem(getBookKey(username))) {
+                localStorage.setItem(getBookKey(username), old);
+            }
+            localStorage.removeItem("books");
+            if (firebaseReady && Array.isArray(ob)) pushToFirebase(username, ob);
+        } catch (e) {}
+    }
+    function showApp() {
+        document.getElementById("appScreen").style.display = "block";
+        setupCozyDashboard();
+        if (!firebaseReady) updateSyncUI('local-only');
+    }
+
+    // FIREBASE
+    function pushToFirebase(username, arr) { if (!firebaseReady) return; var o = {}; arr.forEach(function(b) { o[b.id] = b; }); db.ref('books/' + username.toLowerCase()).set(o).catch(function(e) {}); }
+    function loadFromFirebase(username) { return new Promise(function(resolve) { if (!firebaseReady) { resolve(null); return; } db.ref('books/' + username.toLowerCase()).once('value').then(function(s) { var d = s.val(); resolve(d ? Object.values(d) : null); }).catch(function() { resolve(null); }); }); }
+    function watchFirebase(username) { if (!firebaseReady) return; db.ref('books/' + username.toLowerCase()).on('value', function(s) { var d = s.val(), nb = d ? Object.values(d) : []; if (JSON.stringify(nb) !== JSON.stringify(books)) { books = nb; cacheLocal(); renderBooks(); updateStats(); } }); }
+
+    // BOOKS
+    var books = [];
+    function cacheLocal() {
+        try { localStorage.setItem(getBookKey(currentUser), JSON.stringify(books)); return true; }
+        catch (e) {
+            showToast('Browser storage is full. Your new changes may not be saved. Export a backup or use a smaller cover image.', 'error');
+            return false;
+        }
+    }
+
+    async function loadUserBooks() {
+        var fb = await loadFromFirebase(currentUser);
+        if (fb && fb.length > 0) { books = fb; cacheLocal(); renderBooks(); updateStats(); watchFirebase(currentUser); return; }
+        try { var s = localStorage.getItem(getBookKey(currentUser)); books = s ? JSON.parse(s) : []; if (!Array.isArray(books)) books = []; } catch (e) { books = []; }
+        renderBooks(); updateStats();
+        if (firebaseReady && books.length > 0) { pushToFirebase(currentUser, books); watchFirebase(currentUser); }
+        else if (firebaseReady) { watchFirebase(currentUser); }
+        recompressOldImages();
+    }
+
+    async function saveBooks() { const saved = cacheLocal(); if (saved && firebaseReady) pushToFirebase(currentUser, books); return saved; }
+
+    // HIGH-QUALITY BOOK COVERS
+    // Keep existing saved cover data as-is. Never recompress older book covers.
+    // New covers are resized only when necessary, with high quality JPEG encoding.
+    function compressImage(file) {
+        return new Promise(function(resolve, reject) {
+            if (!file || !file.type.startsWith('image/')) { reject(Error('Choose an image file.')); return; }
+            const reader = new FileReader();
+            reader.onerror = function() { reject(Error('Cannot read this image.')); };
+            reader.onload = function(event) {
+                const img = new Image();
+                img.onerror = function() { reject(Error('Cannot open this image.')); };
+                img.onload = function() {
+                    try {
+                        const maxWidth = 800, maxHeight = 1200;
+                        const scale = Math.min(1, maxWidth / img.naturalWidth, maxHeight / img.naturalHeight);
+                        const width = Math.max(1, Math.round(img.naturalWidth * scale));
+                        const height = Math.max(1, Math.round(img.naturalHeight * scale));
+                        const canvas = document.createElement('canvas');
+                        canvas.width = width; canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.imageSmoothingEnabled = true;
+                        ctx.imageSmoothingQuality = 'high';
+                        // White backing avoids turning transparent PNG areas black in JPEG.
+                        ctx.fillStyle = '#fffefa'; ctx.fillRect(0, 0, width, height);
+                        ctx.drawImage(img, 0, 0, width, height);
+                        // Keep cover detail while remaining reasonably sized for browser storage.
+                        const result = canvas.toDataURL('image/jpeg', 0.86);
+                        resolve(result);
+                    } catch (error) { reject(error); }
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
+    // Compatibility placeholder: older code invokes this after loading books.
+    // Deliberately does nothing: previously stored covers must never be degraded.
+    async function recompressOldImages() { return; }
+
+    // ==================== RANDOM PICKER ====================
+    var isShuffling = false;
+    var selectedBookMood = 'Any';
+
+    function setBookMood(mood, button) {
+        selectedBookMood = mood;
+        document.querySelectorAll('.mood-chip').forEach(function(chip) { chip.classList.toggle('active', chip === button); });
+        document.getElementById('randomResult').style.display = 'none';
+        document.getElementById('shuffleText').style.display = 'none';
+        updateRandomPicker();
+    }
+
+    function getMoodBooks() {
+        var candidates = books.filter(function(b) { return !b.finished; });
+        if (selectedBookMood === 'Any') return candidates;
+        if (selectedBookMood === 'Short Read') return candidates.filter(function(b) { return Number(b.pages || b.pageCount || 0) > 0 && Number(b.pages || b.pageCount || 0) <= 200; });
+        if (selectedBookMood === 'Cozy') return candidates.filter(function(b) { return /cozy|fiction|fantasy|romance/i.test((b.genre || '') + ' ' + (b.feeling || '')); });
+        return candidates.filter(function(b) { return (b.genre || '').toLowerCase().indexOf(selectedBookMood.toLowerCase()) !== -1; });
+    }
+
+
+    function setGameCategory(category) {
+        var titles = {pick:'Choose your next story',quick:'Let chance decide',challenge:'A playful little challenge',focus:'Slow down & enjoy'};
+        document.querySelectorAll('.studio-filter').forEach(function(btn){btn.classList.toggle('active',btn.dataset.filter===category);});
+        var count=0;
+        document.querySelectorAll('#studioGamesGrid .game-btn').forEach(function(btn){
+            var visible = btn.dataset.category === category;
+            btn.classList.toggle('studio-visible',visible);
+            if(visible)count++;
+        });
+        document.getElementById('studioCategoryTitle').textContent=titles[category]||'Reading activities';
+        document.getElementById('studioGameCount').textContent=count+' activities';
+        var output=document.getElementById('readingGameOutput');
+        if(output) {output.classList.remove('show');output.innerHTML='';}
+    }
+    document.addEventListener('DOMContentLoaded',function(){setGameCategory('pick');});
+
+    function openReadingGames() {
+        switchTab('reading');
+        var games = document.getElementById('readingGames');
+        if (games) { var drawer=document.getElementById('readingActivitiesDrawer'); if(drawer) drawer.open=true; setGameCategory('pick'); games.scrollIntoView({behavior:'smooth', block:'start'}); }
+    }
+
+    function updateRandomPicker() {
+        var readingBooks = books.filter(function(b) { return !b.finished; });
+        var picker = document.getElementById('randomPicker');
+        var countEl = document.getElementById('pickerCount');
+
+        picker.style.display = 'block';
+        var emptyHint = document.getElementById('emptyShelfHint');
+        if (emptyHint) emptyHint.style.display = readingBooks.length ? 'none' : 'block';
+        if (readingBooks.length >= 1) {
+            var moodCount = getMoodBooks().length;
+            countEl.textContent = moodCount + (moodCount === 1 ? ' book to choose from' : ' books to choose from');
+            // Reset if currently showing result for a deleted book
+            var resultInfo = document.querySelector('#resultContent .result-info h4');
+            if (resultInfo) {
+                var resultName = resultInfo.textContent;
+                var stillExists = readingBooks.some(function(b) { return b.name === resultName; });
+                if (!stillExists) {
+                    document.getElementById('randomResult').style.display = 'none';
+                    document.getElementById('shuffleText').style.display = 'none';
+                }
+            }
+        } else {
+            countEl.textContent = '0 books — add one to start picking';
+            document.getElementById('randomResult').style.display = 'none';
+            document.getElementById('shuffleText').style.display = 'none';
+        }
+    }
+
+    function pickRandomBook() {
+        var readingBooks = getMoodBooks();
+        if (readingBooks.length < 1) { showToast("No books match this mood yet. Try another mood!", "error"); return; }
+        if (isShuffling) return;
+        isShuffling = true;
+
+        var btn = document.getElementById('shuffleBtn');
+        var resultDiv = document.getElementById('randomResult');
+        var shuffleText = document.getElementById('shuffleText');
+
+        btn.classList.add('shuffling');
+        btn.disabled = true;
+        resultDiv.style.display = 'none';
+        resultDiv.classList.remove('pop-in');
+        shuffleText.style.display = 'block';
+
+        // Gradually slow down for suspense
+        var delays = [];
+        for (var i = 0; i < 8; i++) delays.push(70);
+        for (var i = 0; i < 6; i++) delays.push(130);
+        for (var i = 0; i < 4; i++) delays.push(220);
+        for (var i = 0; i < 3; i++) delays.push(350);
+        delays.push(500);
+
+        var idx = 0;
+        function tick() {
+            if (idx >= delays.length) {
+                var final = readingBooks[Math.floor(Math.random() * readingBooks.length)];
+                showRandomResult(final);
+                btn.classList.remove('shuffling');
+                btn.disabled = false;
+                isShuffling = false;
+                return;
+            }
+            shuffleText.textContent = readingBooks[Math.floor(Math.random() * readingBooks.length)].name;
+            idx++;
+            setTimeout(tick, delays[idx - 1]);
+        }
+        tick();
+    }
+
+    function showRandomResult(book) {
+        var shuffleText = document.getElementById('shuffleText');
+        var resultDiv = document.getElementById('randomResult');
+        var content = document.getElementById('resultContent');
+
+        shuffleText.style.display = 'none';
+
+        var coverHtml = book.cover
+            ? '<img src="' + esc(book.cover) + '" alt="" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"><i class="fas fa-book" style="display:none"></i>'
+            : '<i class="fas fa-book"></i>';
+
+        var metaHtml = '';
+        if (book.genre) metaHtml += '<span><i class="fas fa-tag"></i> ' + esc(book.genre) + '</span>';
+        if (book.progress > 0) metaHtml += '<span><i class="fas fa-chart-bar"></i> ' + book.progress + '%</span>';
+        if (book.rating > 0) metaHtml += '<span><i class="fas fa-star"></i> ' + book.rating + '/5</span>';
+
+        content.innerHTML =
+            '<div class="result-card">' +
+                '<div class="result-cover">' + coverHtml + '</div>' +
+                '<div class="result-info">' +
+                    '<h4>' + esc(book.name) + '</h4>' +
+                    '<div class="result-author"><i class="fas fa-user-pen" style="color:var(--dark-pink);margin-right:5px;font-size:0.85rem"></i>' + (book.author ? esc(book.author) : 'Unknown author') + '</div>' +
+                    (metaHtml ? '<div class="result-meta">' + metaHtml + '</div>' : '') +
+                '</div>' +
+            '</div>' +
+            '<div class="result-magic"><i class="fas fa-sparkles"></i> The universe has chosen for you!</div>';
+
+        resultDiv.style.display = 'block';
+        resultDiv.classList.remove('pop-in');
+        void resultDiv.offsetWidth;
+        resultDiv.classList.add('pop-in');
+    }
+
+    function pickWhatShouldIRead() {
+        var candidates = books.filter(function(b) { return !b.finished; });
+        if (!candidates.length) { showToast("Add an unfinished book first.", "error"); return; }
+
+        // Give a gentle preference to books not yet started, then low-progress books.
+        var pool = candidates.slice().sort(function(a, b) {
+            return Number(a.progress || 0) - Number(b.progress || 0);
+        });
+        var top = pool.slice(0, Math.max(1, Math.ceil(pool.length / 2)));
+        var chosen = top[Math.floor(Math.random() * top.length)];
+        showRandomResult(chosen);
+
+        var box = document.getElementById('funActivityBox');
+        document.getElementById('funActivityTitle').textContent = '📚 My suggestion for your next read';
+        document.getElementById('funActivityText').textContent = 'I picked from the books you have not finished yet, with a little preference for books you have barely started.';
+        box.classList.add('show');
+    }
+
+    function pickUniverseBook() {
+        var candidates = books.filter(function(b) { return !b.finished; });
+        if (!candidates.length) { showToast("The universe needs at least one unfinished book on your shelf.", "error"); return; }
+
+        var today = new Date();
+        var seed = today.getFullYear() * 10000 + (today.getMonth() + 1) * 100 + today.getDate();
+        var combined = candidates.map(function(b) { return (b.name || '') + (b.author || ''); }).join('');
+        for (var i = 0; i < combined.length; i++) seed = (seed * 31 + combined.charCodeAt(i)) >>> 0;
+
+        var chosen = candidates[seed % candidates.length];
+        showRandomResult(chosen);
+
+        var box = document.getElementById('funActivityBox');
+        document.getElementById('funActivityTitle').textContent = '✨ The universe has spoken';
+        document.getElementById('funActivityText').textContent = 'This is your universe pick for today. Come back tomorrow for a new destiny choice.';
+        box.classList.add('show');
+    }
+
+    function luckyBookOfTheDay() {
+        var candidates = books.filter(function(b) { return !b.finished; });
+        if (!candidates.length) { showToast("Add an unfinished book first.", "error"); return; }
+
+        var key = new Date().toISOString().slice(0,10);
+        var seed = 0;
+        for (var i = 0; i < key.length; i++) seed += key.charCodeAt(i) * (i + 7);
+        var chosen = candidates[seed % candidates.length];
+        showRandomResult(chosen);
+
+        var box = document.getElementById('funActivityBox');
+        document.getElementById('funActivityTitle').textContent = '🍀 Lucky book of the day';
+        document.getElementById('funActivityText').textContent = 'One special book from your shelf has been chosen as today’s lucky read.';
+        box.classList.add('show');
+    }
+
+    function giveReadingChallenge() {
+        var challenges = [
+            'Read 10 pages before checking your phone again.',
+            'Read one full chapter with a warm drink.',
+            'Read for 15 quiet minutes with no notifications.',
+            'Pick a book you have been avoiding and give it 20 pages.',
+            'Read somewhere different today — by a window, outside, or in a café.',
+            'After reading, write one sentence about how the chapter made you feel.',
+            'Find one beautiful sentence in your current book and save it.',
+            'Read until you discover one new word, idea, or fact.',
+            'Choose the shortest unread book on your shelf and read one chapter.',
+            'Read 5 pages now. If you want to stop after that, you can.'
+        ];
+        var challenge = challenges[Math.floor(Math.random() * challenges.length)];
+        var box = document.getElementById('funActivityBox');
+        document.getElementById('funActivityTitle').textContent = '🎯 Your little reading challenge';
+        document.getElementById('funActivityText').textContent = challenge;
+        box.classList.add('show');
+    }
+
+ 
+   // NEW: eight optional mini-games; existing Surprise Me, mood picker and daily picks remain intact.
+   function randomFrom(list) { return list[Math.floor(Math.random() * list.length)]; }
+   function unfinishedShelf() { return books.filter(function(b) { return !b.finished; }); }
+   function gameOutput(title, message, reveal) {
+       var output = document.getElementById('readingGameOutput');
+       output.innerHTML = '';
+       var heading = document.createElement('h4'); heading.textContent = title; output.appendChild(heading);
+       var description = document.createElement('p'); description.textContent = message; output.appendChild(description);
+       if (reveal) {
+           var button = document.createElement('button'); button.type = 'button'; button.className = 'game-reveal';
+           button.textContent = reveal.label;
+           button.addEventListener('click', function() {
+               button.remove(); description.textContent = reveal.message;
+               if (reveal.book) showRandomResult(reveal.book);
+           });
+           output.appendChild(button);
+       }
+       output.classList.add('show');
+   }
+   function playReadingGame(game) {
+       var shelf = unfinishedShelf();
+       if (!shelf.length) { gameOutput('📚 Your shelf is waiting', 'Add an unfinished book first to play these games.'); return; }
+       if (game === 'genre') {
+           var genres = [...new Set(shelf.map(function(b) { return (b.genre || 'Other').trim() || 'Other'; }))];
+           var genre = randomFrom(genres);
+           var match = randomFrom(shelf.filter(function(b) { return ((b.genre || 'Other').trim() || 'Other') === genre; }));
+           gameOutput('🎡 The wheel landed on ' + genre + '!', 'Your genre pick: ' + match.name + (match.author ? ' by ' + match.author : '') + '.');
+           showRandomResult(match);
+       } else if (game === 'dice') {
+           var pages = randomFrom([5,10,15,20,25,30]);
+           gameOutput('🎲 You rolled ' + pages + ' pages!', 'Try reading ' + pages + ' pages of ' + randomFrom(shelf).name + ' today. Every page counts!');
+       } else if (game === 'blind') {
+           var secret = randomFrom(shelf);
+           gameOutput('🙈 Your mystery pick is ready', 'No peeking! A book has been secretly chosen from your unfinished shelf.', {label:'🎁 Reveal my book', message:'Your surprise is ' + secret.name + (secret.author ? ' by ' + secret.author : '') + '!', book:secret});
+       } else if (game === 'quest') {
+           var quests = ['Read for 12 quiet minutes.', 'Read by a window or outdoors.', 'Read 8 pages and note a favorite sentence.', 'Read a chapter with a warm drink.', 'Find one character you relate to.', 'Read without notifications for 15 minutes.', 'Discover one new word and write it down.', 'Read 5 pages, then decide if you want more.'];
+           gameOutput('🗺️ Your reading quest', randomFrom(quests) + ' Suggested companion: ' + randomFrom(shelf).name + '.');
+       } else if (game === 'firstline') {
+           var first = randomFrom(shelf);
+           gameOutput('💬 First-Line Challenge', 'Open ' + first.name + ' at your next unread chapter. Read its first line, then decide whether to keep going.');
+       } else if (game === 'dare') {
+           var postponed = shelf.slice().sort(function(a,b) { return Number(a.progress||0)-Number(b.progress||0); });
+           var dared = randomFrom(postponed.slice(0,Math.max(1,Math.ceil(postponed.length/2))));
+           gameOutput('⚡ Your book dare!', randomFrom(['Give ', 'Take a chance on ', 'Be brave and open ']) + dared.name + '. Read 10 pages before choosing whether to continue.');
+       } else if (game === 'coin') {
+           if (shelf.length < 2) { gameOutput('🪙 Two books needed', 'Add one more unfinished book to flip a coin between two titles.'); return; }
+           var firstIndex = Math.floor(Math.random()*shelf.length), secondOptions = shelf.filter(function(_,i) { return i !== firstIndex; });
+           var a = shelf[firstIndex], b = randomFrom(secondOptions), heads = Math.random()<0.5;
+           gameOutput('🪙 ' + (heads ? 'Heads' : 'Tails') + ' wins!', 'Heads: ' + a.name + '  •  Tails: ' + b.name + '. Your choice is ' + (heads ? a.name : b.name) + '!');
+           showRandomResult(heads ? a : b);
+       } else if (game === 'reward') {
+           var target = randomFrom([5,10,15,20]);
+           var reward = randomFrom(['make your favorite warm drink', 'enjoy a short cozy break', 'listen to a favorite song', 'have a favorite snack', 'spend 10 minutes relaxing', 'put a little sticker on your reading calendar']);
+           gameOutput('🎁 A reward to look forward to', 'Read ' + target + ' pages of ' + randomFrom(shelf).name + ', then ' + reward + '. You earned it!');
+       }
+   }
+
+
+   // ADDITIONAL INTERACTIVE READING GAMES — preserve the existing tracker and storage.
+   var focusInterval = null, focusSeconds = 0, focusStarted = false;
+   function gameEl(tag, text, className) {
+       var e = document.createElement(tag);
+       if (text !== undefined) e.textContent = text;
+       if (className) e.className = className;
+       return e;
+   }
+   function gameButton(text, callback) {
+       var b = gameEl('button',text,'game-mini-btn'); b.type='button'; b.addEventListener('click',callback); return b;
+   }
+   function gamePanel(title,description) {
+       var out = document.getElementById('readingGameOutput'); out.replaceChildren(); out.classList.add('show');
+       out.append(gameEl('h4',title),gameEl('p',description));
+       return out;
+   }
+   function gamePick(shelf) { return shelf[Math.floor(Math.random()*shelf.length)]; }
+   function gameStorageKey(suffix) { return 'library_games_'+String(currentUser||'reader')+'_'+suffix; }
+   function playExtraGame(type) {
+       if(focusInterval) { clearInterval(focusInterval); focusInterval=null; focusStarted=false; }
+       var shelf=books.filter(function(b){return !b.finished;});
+       if(!shelf.length) {gamePanel('📚 Add a book to begin','Add at least one unfinished book to your shelf to unlock these games.');return;}
+       var chosen=gamePick(shelf), out;
+       if(type==='timer') {
+           out=gamePanel('⏳ Cozy Reading Timer','Pick a focus length and enjoy your book. The timer runs while this page remains open.');
+           var clock=gameEl('div','05:00','game-clock');out.append(clock);
+           [5,10,15,25].forEach(function(m){out.append(gameButton(m+' min',function(){
+               if(focusInterval) clearInterval(focusInterval);focusSeconds=m*60;focusStarted=false;display();
+           }));});
+           var start=gameButton('▶ Start / Pause',function(){
+               if(focusInterval){clearInterval(focusInterval);focusInterval=null;focusStarted=false;return;}
+               if(focusSeconds<=0)focusSeconds=300;focusStarted=true;
+               focusInterval=setInterval(function(){focusSeconds--;display();if(focusSeconds<=0){clearInterval(focusInterval);focusInterval=null;focusStarted=false;gamePanel('🌟 Time well spent!','Your reading session is complete. Enjoy a little break!');}},1000);
+           });out.append(start);
+           function display(){clock.textContent=String(Math.floor(focusSeconds/60)).padStart(2,'0')+':'+String(focusSeconds%60).padStart(2,'0');}
+           focusSeconds=300;display();
+       } else if(type==='bingo') {
+           var tasks=['Read 5 pages','Read by a window','Try a new genre','Save a quote','Read for 10 minutes','Enjoy a warm drink','Read one chapter','Find a new word','Tell someone about a book'];
+           var key=gameStorageKey('bingo');var saved=[];try{saved=JSON.parse(localStorage.getItem(key))||[]}catch(e){}
+           out=gamePanel('🌼 Reading Bingo','Tap a square after completing its challenge. Your progress stays saved in this browser.');
+           var board=gameEl('div',undefined,'bingo-board');out.append(board);
+           tasks.forEach(function(task,i){var btn=gameButton(task,function(){var pos=saved.indexOf(i);if(pos===-1)saved.push(i);else saved.splice(pos,1);localStorage.setItem(key,JSON.stringify(saved));paint();});btn.classList.add('bingo-cell');btn.dataset.idx=i;board.append(btn);});
+           var status=gameEl('p');out.append(status);
+           function paint(){board.querySelectorAll('button').forEach(function(b){b.classList.toggle('done',saved.includes(Number(b.dataset.idx)));b.setAttribute('aria-pressed',saved.includes(Number(b.dataset.idx))?'true':'false');});
+               var lines=[[0,1,2],[3,4,5],[6,7,8],[0,3,6],[1,4,7],[2,5,8],[0,4,8],[2,4,6]];
+               var count=lines.filter(function(row){return row.every(function(i){return saved.includes(i);});}).length;
+               status.textContent=saved.length+'/9 completed'+(count?' · '+count+' bingo line'+(count>1?'s':'')+'! 🎉':'');}paint();
+           out.append(gameButton('Reset bingo',function(){saved=[];localStorage.removeItem(key);paint();}));
+       } else if(type==='tournament') {
+           if(shelf.length<2){gamePanel('🏆 Book Battle','Add a second unfinished book to start a book battle.');return;}
+           var a=gamePick(shelf),b=gamePick(shelf.filter(function(x){return x!==a;}));
+           out=gamePanel('🏆 Book Battle','Two books enter. Pick the one you feel like reading!');
+           [a,b].forEach(function(book){out.append(gameButton('📖 '+book.name,function(){gamePanel('🏆 Your winner: '+book.name,'Great choice! Your next chapter awaits.');showRandomResult(book);}));});
+           out.append(gameButton('🔀 New matchup',function(){playExtraGame('tournament');}));
+       } else if(type==='alphabet') {
+           var letters=[...new Set(shelf.map(function(b){return (b.name||'').trim().charAt(0).toUpperCase();}).filter(Boolean))];
+           var letter=gamePick(letters),matches=shelf.filter(function(b){return (b.name||'').trim().charAt(0).toUpperCase()===letter;});
+           out=gamePanel('🔤 Your letter is '+letter,'Your shelf match: '+gamePick(matches).name+'. Open it and read a few pages!');
+       } else if(type==='speeddate') {
+           out=gamePanel('💌 Five-minute book date','Give '+chosen.name+' just five minutes. No pressure to commit!');
+           out.append(gameButton('💖 This is the one!',function(){showRandomResult(chosen);gamePanel('💖 It’s a match!','Keep reading '+chosen.name+'!');}));
+           out.append(gameButton('↻ Another date',function(){playExtraGame('speeddate');}));
+       } else if(type==='prompt') {
+           var prompts=['What surprised you in the last chapter?','What would you ask the main character?','What scene can you picture most clearly?','Which character would you befriend?','What do you think happens next?','How does this story make you feel?','What would you change about the setting?'];
+           out=gamePanel('🫙 A prompt from the jar',gamePick(prompts)+'  ·  Book: '+chosen.name);
+           out.append(gameButton('Another prompt',function(){playExtraGame('prompt');}));
+       } else if(type==='weekend') {
+           var sorted=shelf.slice().sort(function(a,b){return Number(a.progress||0)-Number(b.progress||0);});
+           chosen=gamePick(sorted.slice(0,Math.max(1,Math.ceil(sorted.length/2))));
+           out=gamePanel('🌤️ Your weekend companion',chosen.name+' is your weekend reading buddy. Try a comfortable 20-minute reading session.');showRandomResult(chosen);
+       } else if(type==='tiny') {
+           var goals=['Read just one page.','Read for one minute.','Read the next paragraph.','Open your book and read the first sentence.','Choose a comfortable spot and read two pages.'];
+           out=gamePanel('🌱 A tiny step counts',gamePick(goals)+' Try it with '+chosen.name+'.');
+       } else if(type==='detective') {
+           var clues=['Notice a detail about the setting.','Look for a clue about what might happen next.','Find a character’s hidden motivation.','Spot a repeated word or image.','Find a sentence that changes your opinion.'];
+           out=gamePanel('🕵️ Today’s investigation',gamePick(clues)+'  ·  Case file: '+chosen.name+'.');
+       } else if(type==='fortune') {
+           var fortunes=['A wonderful sentence is waiting for you.','Your next chapter may surprise you.','A little reading time can change your day.','The book you overlook may become a favorite.','A cozy moment is just a page away.'];
+           out=gamePanel('🥠 Your reading fortune',gamePick(fortunes)+' ✨ Suggested read: '+chosen.name+'.');
+       } else if(type==='pair') {
+           if(shelf.length<2){gamePanel('👯 Double Feature','Add a second unfinished book to get a double feature.');return;}
+           var other=gamePick(shelf.filter(function(b){return b!==chosen;}));
+           out=gamePanel('👯 Your double feature','Read 5 pages of '+chosen.name+', then 5 pages of '+other.name+'. See which story draws you in!');
+       } else if(type==='bookmark') {
+           out=gamePanel('🔖 Save a bookmark moment','Write a thought, favorite line, or feeling about '+chosen.name+'. It stays in this browser.');
+           var key=gameStorageKey('bookmark_'+chosen.id),field=gameEl('textarea');field.className='game-note';field.placeholder='A thought worth keeping…';field.value=localStorage.getItem(key)||'';out.append(field);
+           out.append(gameButton('💾 Save my thought',function(){localStorage.setItem(key,field.value);showToast('Your bookmark thought was saved.','success');}));
+       }
+   }
+
+   // ==================== APP STATE ====================
+    var currentTab = "all", selectedRating = 0, editSelectedRating = 0;
+    var currentImageUrl = "", editCurrentImageUrl = "", editingBookId = null;
+    var eventListenersReady = false;
+    var bookForm, editForm, allBooksList, readingBooksList, finishedBooksList;
+    var toast, ratingStars, editRatingStars, tabs, tabContents;
+    var bookCoverInput, editBookCoverInput, imagePreview, editImagePreview;
+    var editMode, formContainer;
+
+    document.addEventListener("DOMContentLoaded", function() {
+        bookForm = document.getElementById("bookForm"); editForm = document.getElementById("editForm");
+        allBooksList = document.getElementById("allBooksList"); readingBooksList = document.getElementById("readingBooksList"); finishedBooksList = document.getElementById("finishedBooksList");
+        toast = document.getElementById("toast");
+        ratingStars = document.querySelectorAll("#ratingContainer .star"); editRatingStars = document.querySelectorAll("#editRatingContainer .star");
+        tabs = document.querySelectorAll(".tab"); tabContents = document.querySelectorAll(".tab-content");
+        bookCoverInput = document.getElementById("bookCover"); editBookCoverInput = document.getElementById("editBookCover");
+        imagePreview = document.getElementById("imagePreview"); editImagePreview = document.getElementById("editImagePreview");
+        editMode = document.getElementById("editMode"); formContainer = document.getElementById("formContainer");
+
+        var session = localStorage.getItem("reading_session");
+        var savedUsers = [];
+        try { savedUsers = JSON.parse(localStorage.getItem("reading_users")) || []; } catch (e) {}
+        currentUser = session || (savedUsers.length && savedUsers[0].username) || "reader";
+        localStorage.setItem("reading_session", currentUser);
+        migrateOldBooks(currentUser);
+        showApp(); loadUserBooks(); setupEventListeners(); renderWishlist();
+    });
+
+    function setupEventListeners() {
+        if (eventListenersReady) return; eventListenersReady = true;
+        bookForm.addEventListener("submit", function(e) { e.preventDefault(); addBook(); });
+        ratingStars.forEach(function(s) { s.addEventListener("click", function() { selectedRating = parseInt(s.dataset.rating); updateRatingDisplay(); }); });
+        editRatingStars.forEach(function(s) { s.addEventListener("click", function() { editSelectedRating = parseInt(s.dataset.rating); updateEditRatingDisplay(); }); });
+        tabs.forEach(function(t) { t.addEventListener("click", function() { switchTab(t.dataset.tab); }); });
+        bookCoverInput.addEventListener("input", function(e) { if (e.target.value) updateImgPrev(e.target.value); else resetImgPrev(); });
+        editBookCoverInput.addEventListener("input", function(e) { if (e.target.value) updateEditImgPrev(e.target.value); else resetEditImgPrev(); });
+    }
+
+    async function handleFileUpload(ev) { var f = ev.target.files[0]; if (!f) return; try { imagePreview.innerHTML = '<i class="fas fa-spinner fa-spin" style="font-size:1.5rem;color:var(--primary-pink)"></i>'; currentImageUrl = await compressImage(f); bookCoverInput.value = "Uploaded"; updateImgPrev(currentImageUrl); } catch (e) { resetImgPrev(); showToast("Image failed.", "error"); } ev.target.value = ''; }
+    async function handleEditFileUpload(ev) { var f = ev.target.files[0]; if (!f) return; try { editImagePreview.innerHTML = '<i class="fas fa-spinner fa-spin" style="font-size:1.5rem;color:var(--primary-pink)"></i>'; editCurrentImageUrl = await compressImage(f); editBookCoverInput.value = "Uploaded"; updateEditImgPrev(editCurrentImageUrl); } catch (e) { resetEditImgPrev(); showToast("Image failed.", "error"); } ev.target.value = ''; }
+    function updateImgPrev(url) { var img = new Image(); img.onload = function() { imagePreview.innerHTML = ''; img.style.cssText = 'width:100%;height:100%;object-fit:cover'; imagePreview.appendChild(img); }; img.onerror = resetImgPrev; img.src = url; }
+    function updateEditImgPrev(url) { var img = new Image(); img.onload = function() { editImagePreview.innerHTML = ''; img.style.cssText = 'width:100%;height:100%;object-fit:cover'; editImagePreview.appendChild(img); }; img.onerror = resetEditImgPrev; img.src = url; }
+    function resetImgPrev() { imagePreview.innerHTML = '<i class="fas fa-book"></i>'; currentImageUrl = ""; }
+    function resetEditImgPrev() { editImagePreview.innerHTML = '<i class="fas fa-book"></i>'; editCurrentImageUrl = ""; }
+    function switchTab(tn) { tabs.forEach(function(t) { t.classList.remove("active"); }); tabContents.forEach(function(tc) { tc.classList.remove("active"); }); var t = document.querySelector('[data-tab="' + tn + '"]'); var c = document.getElementById(tn); if (t) t.classList.add("active"); if (c) c.classList.add("active"); }
+    function updateRatingDisplay() { ratingStars.forEach(function(s, i) { s.classList.toggle("active", i < selectedRating); }); }
+    function updateEditRatingDisplay() { editRatingStars.forEach(function(s, i) { s.classList.toggle("active", i < editSelectedRating); }); }
+
+    async function addBook() {
+        var name = document.getElementById("bookName").value.trim(); if (!name) { showToast("Enter book name", "error"); return; }
+        var prog = document.getElementById("progress").value || 0, end = document.getElementById("endDate").value;
+        books.push({ id: Date.now(), name: name, author: document.getElementById("author").value.trim(), pages: parseInt(document.getElementById("pages").value, 10) || 0, feeling: document.getElementById("feeling").value.trim(), start: document.getElementById("startDate").value, end: end, genre: document.getElementById("genre").value, progress: parseInt(prog), rating: selectedRating, finished: end !== "" || prog == 100, description: "", cover: currentImageUrl || bookCoverInput.value });
+        await saveBooks(); renderBooks(); updateStats(); markReadingActivity();
+        bookForm.reset(); selectedRating = 0; updateRatingDisplay(); resetImgPrev();
+        showToast("Book added! It's now in the random picker.", "success");
+    }
+
+    function editBook(id) {
+        var b = books.find(function(x) { return x.id === id; }); if (!b) return; editingBookId = id;
+        document.getElementById("editBookName").value = b.name || ""; document.getElementById("editAuthor").value = b.author || "";
+        document.getElementById("editGenre").value = b.genre || ""; document.getElementById("editStartDate").value = b.start || "";
+        document.getElementById("editEndDate").value = b.end || ""; document.getElementById("editPages").value = b.pages || ""; document.getElementById("editProgress").value = b.progress || 0;
+        document.getElementById("editFeeling").value = b.feeling || ""; document.getElementById("editBookCover").value = b.cover || "";
+        editSelectedRating = b.rating || 0; updateEditRatingDisplay();
+        if (b.cover) { updateEditImgPrev(b.cover); editCurrentImageUrl = b.cover; } else resetEditImgPrev();
+        editMode.style.display = "block"; formContainer.style.display = "none"; editMode.scrollIntoView({ behavior: "smooth" });
+    }
+
+    async function saveEdit() {
+        if (editingBookId === null) return; var idx = books.findIndex(function(x) { return x.id === editingBookId; }); if (idx === -1) return;
+        var name = document.getElementById("editBookName").value.trim(); if (!name) { showToast("Enter name", "error"); return; }
+        var end = document.getElementById("editEndDate").value, prog = parseInt(document.getElementById("editProgress").value) || 0;
+        books[idx] = { id: books[idx].id, name: name, author: document.getElementById("editAuthor").value.trim(), pages: parseInt(document.getElementById("editPages").value, 10) || 0, genre: document.getElementById("editGenre").value, start: document.getElementById("editStartDate").value, end: end, progress: prog, feeling: document.getElementById("editFeeling").value.trim(), rating: editSelectedRating, cover: editCurrentImageUrl || document.getElementById("editBookCover").value, finished: end !== "" || prog === 100, description: books[idx].description || "" };
+        await saveBooks(); renderBooks(); updateStats(); cancelEdit(); showToast("Updated!", "success");
+    }
+
+    function cancelEdit() { editMode.style.display = "none"; formContainer.style.display = "block"; editingBookId = null; editSelectedRating = 0; updateEditRatingDisplay(); editForm.reset(); resetEditImgPrev(); }
+
+    function renderBooks() {
+        renderList(allBooksList, books, "all");
+        var readingBooks = books.filter(function(b) { return !b.finished; });
+        renderList(readingBooksList, readingBooks, "reading");
+        renderList(finishedBooksList, books.filter(function(b) { return b.finished; }), "finished");
+        updateRandomPicker();
+    }
+
+    function renderList(container, list, type) {
+        if (!list || list.length === 0) {
+            var msg = "", ico = "";
+            if (type === "all") { msg = "No books yet."; ico = "fa-book-reader"; }
+            else if (type === "reading") { msg = "No books being read."; ico = "fa-book"; }
+            else { msg = "No finished books."; ico = "fa-award"; }
+            container.innerHTML = '<div class="empty-state"><i class="fas ' + ico + '"></i><p>' + msg + '</p></div>';
+            return;
+        }
+        container.innerHTML = list.map(function(b) {
+            var n = esc(b.name || "Untitled"), a = esc(b.author || ""), g = esc(b.genre || ""), f = esc(b.feeling || ""), d = esc(b.description || ""), c = esc(b.cover || "");
+            var meta = "";
+            if (a) meta += '<div class="book-meta-item"><i class="fas fa-user-pen"></i> ' + a + '</div>';
+            if (b.pages) meta += '<div class="book-meta-item"><i class="fas fa-book-open"></i> ' + b.pages + ' pages</div>';
+            if (g) meta += '<div class="book-meta-item"><i class="fas fa-tag"></i> ' + g + '</div>';
+            if (b.start) meta += '<div class="book-meta-item"><i class="fas fa-calendar-day"></i> ' + fmtD(b.start) + '</div>';
+            if (b.end) meta += '<div class="book-meta-item"><i class="fas fa-calendar-check"></i> ' + fmtD(b.end) + '</div>';
+            var feel = f ? '<div class="book-feeling"><i class="fas fa-heart"></i> ' + f + '</div>' : '';
+            var prog = '';
+            if (b.progress > 0 && !b.finished) prog = '<div class="book-progress"><div class="progress-info"><span>Progress</span><span>' + b.progress + '%</span></div><div class="progress-bar"><div class="progress" style="width:' + b.progress + '%"></div></div></div>';
+            var stars = '';
+            if (b.rating > 0) { for (var i = 1; i <= 5; i++) stars += i <= b.rating ? '<i class="fas fa-star" style="color:#ffc107"></i>' : '<i class="far fa-star" style="color:#ddd"></i>'; stars = '<div class="book-rating">' + stars + '</div>'; }
+            var cv = c ? '<img src="' + c + '" alt="' + n + '" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"><i class="fas fa-book" style="display:none"></i>' : '<i class="fas fa-book"></i>';
+            var badge = b.finished ? '<div class="finished-badge">Finished</div>' : '<div class="reading-badge">Reading</div>';
+            var desc = '';
+            if (b.finished) desc = d ? '<div class="description-section"><div class="description-label"><i class="fas fa-pen-fancy"></i> Final Thoughts</div><div class="description-text">' + d + '</div></div>' : '<div class="description-section"><div class="description-label"><i class="fas fa-pen-fancy"></i> Final Thoughts</div><div class="finished-form-row"><textarea class="description-input" id="desc-' + b.id + '" placeholder="Share your final thoughts..."></textarea><button class="save-description-btn" onclick="saveDesc(' + b.id + ')"><i class="fas fa-save"></i> Save</button></div></div>';
+            var mk = !b.finished ? '<button class="btn btn-secondary" onclick="markFin(' + b.id + ')"><i class="fas fa-check"></i> Mark Finished</button>' : '';
+            return '<div class="book-card">' + badge + '<div class="book-card-main"><div class="book-cover">' + cv + '</div><div class="book-info"><h3 class="book-title">' + n + '</h3><div class="book-meta-row">' + meta + '</div>' + feel + prog + stars + '</div></div>' + desc + '<div class="book-actions"><button class="btn btn-edit" onclick="editBook(' + b.id + ')"><i class="fas fa-edit"></i> Edit</button>' + mk + '<button class="btn btn-danger" onclick="delBook(' + b.id + ')"><i class="fas fa-trash"></i> Delete</button></div></div>';
+        }).join('');
+    }
+
+    function esc(t) { var d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+    function fmtD(s) { try { return new Date(s).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }); } catch (e) { return s; } }
+
+    async function saveDesc(id) { var el = document.getElementById('desc-' + id); if (!el) return; var t = el.value.trim(); if (!t) { showToast("Enter description", "error"); return; } var i = books.findIndex(function(b) { return b.id === id; }); if (i !== -1) { books[i].description = t; await saveBooks(); renderBooks(); showToast("Saved!", "success"); } }
+    async function markFin(id) { var i = books.findIndex(function(b) { return b.id === id; }); if (i !== -1) { books[i].finished = true; books[i].end = new Date().toISOString().split('T')[0]; books[i].progress = 100; await saveBooks(); renderBooks(); updateStats(); markReadingActivity(); showToast("Finished! A little shelf celebration for you ✨", "success"); } }
+    async function delBook(id) { if (confirm("Delete?")) { books = books.filter(function(b) { return b.id !== id; }); await saveBooks(); renderBooks(); updateStats(); showToast("Deleted!", "success"); } }
+
+    function getGoalKey() { return 'reading_goal_' + (currentUser || 'guest').toLowerCase(); }
+    function getActivityKey() { return 'reading_activity_' + (currentUser || 'guest').toLowerCase(); }
+    function getReadingGoal() { var g = parseInt(localStorage.getItem(getGoalKey()), 10); return g > 0 ? g : 12; }
+    function saveReadingGoal() {
+        var field = document.getElementById('readingGoal');
+        var value = Math.max(1, Math.min(365, parseInt(field.value, 10) || 12));
+        localStorage.setItem(getGoalKey(), value); field.value = value; updateStats(); showToast('Your reading goal has been updated 🌿', 'success');
+    }
+    function markReadingActivity() {
+        if (!currentUser) return;
+        var key = getActivityKey(), today = new Date().toISOString().slice(0,10), data = {};
+        try { data = JSON.parse(localStorage.getItem(key)) || {}; } catch(e) { data = {}; }
+        data[today] = true; localStorage.setItem(key, JSON.stringify(data)); updateReadingStreak();
+    }
+    function updateReadingStreak() {
+        var data = {}; try { data = JSON.parse(localStorage.getItem(getActivityKey())) || {}; } catch(e) {}
+        var dates = Object.keys(data).filter(function(d) { return data[d]; }).sort();
+        var streak = 0, cursor = new Date(); cursor.setHours(0,0,0,0);
+        var today = cursor.toISOString().slice(0,10);
+        var yesterday = new Date(cursor.getTime() - 86400000).toISOString().slice(0,10);
+        if (dates.indexOf(today) === -1 && dates.indexOf(yesterday) !== -1) cursor.setDate(cursor.getDate()-1);
+        while (data[cursor.toISOString().slice(0,10)]) { streak++; cursor.setDate(cursor.getDate()-1); }
+        document.getElementById('streakDisplay').textContent = streak ? streak + ' day' + (streak === 1 ? '' : 's') + ' of showing up for your books' : 'Your reading journey starts one page at a time.';
+    }
+    function setupCozyDashboard() {
+        var notes = [
+            'A warm drink, a quiet moment, and a few pages. You do not have to rush a good story.',
+            'A chapter is still progress. Let today be gentle and let the story meet you where you are.',
+            'Make yourself comfortable. Even ten peaceful minutes with a book count.',
+            'Somewhere between the pages, you might find exactly what you needed today.',
+            'No reading race here. Your shelf, your pace, your kind of magic.'
+        ];
+        var quotes = [
+            '“There is no friend as loyal as a book.”',
+            '“A room without books is like a body without a soul.”',
+            '“Books are a uniquely portable magic.”',
+            '“Reading gives us someplace to go when we have to stay where we are.”',
+            '“A book is a dream that you hold in your hands.”'
+        ];
+        var day = Math.floor(Date.now() / 86400000);
+        document.getElementById('dailyNote').textContent = notes[day % notes.length];
+        document.getElementById('quoteOfDay').textContent = quotes[day % quotes.length];
+        document.getElementById('readingGoal').value = getReadingGoal();
+        var hour = new Date().getHours();
+        document.getElementById('welcomeHeadline').textContent = hour < 12 ? 'A slow morning, a fresh page.' : (hour < 18 ? 'Slow down. Turn a page.' : 'Let the day end with a story.');
+        document.getElementById('welcomeMessage').textContent = 'Your next favorite story might be waiting on your shelf. Make yourself comfortable and read a little.';
+        updateReadingStreak();
+    }
+
+    function updateStats() {
+        var t = books.length, fi = books.filter(function(b) { return b.finished; }).length, avg = 0, rt = books.filter(function(b) { return b.rating > 0; });
+        if (rt.length > 0) avg = (rt.reduce(function(s, b) { return s + b.rating; }, 0) / rt.length).toFixed(1);
+        document.getElementById("totalBooks").textContent = t;
+        document.getElementById("finishedBooks").textContent = fi;
+        document.getElementById("currentlyReading").textContent = t - fi;
+        document.getElementById("avgRating").textContent = avg;
+        var goal = getReadingGoal();
+        document.getElementById('goalFinished').textContent = fi;
+        document.getElementById('goalTargetLabel').textContent = goal;
+        document.getElementById('goalFill').style.width = Math.min(100, fi / goal * 100) + '%';
+        document.getElementById('goalCaption').textContent = fi >= goal ? 'Goal reached — lovely work!' : 'Your yearly shelf';
+    }
+
+
+    // WISHLIST: Separate from existing reading_books_* data. Never overwrites the reading shelf.
+    var wishlistEditingId = null;
+    function wishKey() { return 'reading_wishlist_' + String(currentUser || 'reader').toLowerCase(); }
+    function getWishlist() { try { var a = JSON.parse(localStorage.getItem(wishKey()) || '[]'); return Array.isArray(a) ? a : []; } catch(e) { return []; } }
+    function putWishlist(items) { try { localStorage.setItem(wishKey(), JSON.stringify(items)); renderWishlist(); return true; } catch(e) { showToast('Storage is full. Export a backup and free up browser space.', 'error'); return false; } }
+    function toggleWishForm(open, item) {
+        var f=document.getElementById('wishlistForm');
+        if(!open) { f.reset(); f.classList.remove('open'); wishlistEditingId=null; return; }
+        wishlistEditingId=item ? item.id : null;
+        f.reset();
+        document.getElementById('wishFormTitle').textContent=item?'Edit wishlist book':'Add to my wishlist';
+        if(item) { ['Name','Author','Cover','Price','Link','Note'].forEach(function(k){ document.getElementById('wish'+k).value=item[k.toLowerCase()] == null?'':item[k.toLowerCase()]; }); }
+        f.classList.add('open'); f.scrollIntoView({behavior:'smooth',block:'nearest'});
+    }
+    function saveWish(event) {
+        event.preventDefault();
+        var obj={}, fields=['Name','Author','Cover','Price','Link','Note'];
+        fields.forEach(function(k){ obj[k.toLowerCase()]=document.getElementById('wish'+k).value.trim(); });
+        if(!obj.name) return;
+        var items=getWishlist();
+        if(wishlistEditingId!==null) { var index=items.findIndex(function(b){return String(b.id)===String(wishlistEditingId)}); if(index>=0) items[index]=Object.assign({},items[index],obj); }
+        else { obj.id='wish_'+Date.now()+'_'+Math.random().toString(36).slice(2,7); obj.added=new Date().toISOString(); items.unshift(obj); }
+        if(putWishlist(items)) { toggleWishForm(false); showToast('Saved to your wishlist ♡','success'); }
+    }
+    function renderWishlist() {
+        var host=document.getElementById('wishList'); if(!host) return;
+        var items=getWishlist();
+        document.getElementById('wishTabCount').textContent=items.length ? '('+items.length+')':'';
+        host.replaceChildren();
+        if(!items.length) {var empty=document.createElement('div');empty.className='wish-empty';empty.textContent='Your wishlist is empty for now. ♡ Add a book you would love to own.';host.append(empty);return;}
+        items.forEach(function(item){
+            var card=document.createElement('article');card.className='wish-card';
+            var cover=document.createElement('div');cover.className='wish-cover';
+            if(item.cover && /^https?:\/\//i.test(item.cover)) {var img=document.createElement('img');img.alt='';img.src=item.cover;img.onerror=function(){cover.textContent='📖'};cover.append(img);}else cover.textContent='📖';
+            var main=document.createElement('div');main.className='wish-content';
+            function line(tag,txt,cls){var el=document.createElement(tag);el.textContent=txt;if(cls)el.className=cls;main.append(el);return el;}
+            line('h4',item.name||'Untitled'); if(item.author)line('p','by '+item.author);
+            if(item.price!==''&&item.price!=null&&Number.isFinite(Number(item.price)))line('p','$'+Number(item.price).toFixed(2)+' estimated','wish-price');
+            if(item.note)line('p',item.note);
+            var actions=document.createElement('div'); actions.className='wish-actions';
+            function action(label,callback){var b=document.createElement('button');b.type='button';b.className='wish-small';b.textContent=label;b.addEventListener('click',callback);actions.append(b);}
+            action('Edit',function(){toggleWishForm(true,item)});
+            action('Delete',function(){if(confirm('Remove this book from your wishlist?'))putWishlist(getWishlist().filter(function(b){return String(b.id)!==String(item.id)}));});
+            action('Added to shelf ✓',function(){
+                if(!confirm('Move "'+item.name+'" to your reading shelf?'))return;
+                var newBook={id:Date.now()+Math.floor(Math.random()*10000),name:item.name,author:item.author||'',cover:item.cover||'',genre:'Other',pages:0,feeling:'',start:'',end:'',progress:0,rating:0,finished:false,description:''};
+                books.push(newBook);saveBooks().then(function(){putWishlist(getWishlist().filter(function(b){return String(b.id)!==String(item.id)}));renderBooks();updateStats();showToast('Book moved to your reading shelf!','success');});
+            });
+            if(item.link && /^https?:\/\//i.test(item.link)) {var a=document.createElement('a');a.textContent='Visit store ↗';a.href=item.link;a.rel='noopener noreferrer';a.target='_blank';a.className='wish-small';actions.append(a);}
+            main.append(actions);card.append(cover,main);host.append(card);
+        });
+    }
+    // Backups include existing reading books, wishlist, goals and game preferences.
+    function exportLibraryBackup() {
+        var data={type:'my-little-library-backup',version:1,exportedAt:new Date().toISOString(),entries:{}};
+        for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k==='books'||k==='reading_session'||k==='reading_users'||k.startsWith('reading_'))data.entries[k]=localStorage.getItem(k);}
+        var blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+        a.href=url;a.download='my-little-library-backup-'+new Date().toISOString().slice(0,10)+'.json';document.body.append(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url)},1000);
+    }
+    async function importLibraryBackup(event) {
+        var file=event.target.files[0];event.target.value='';if(!file)return;
+        try {
+            var data=JSON.parse(await file.text());
+            if(!data || data.type!=='my-little-library-backup'|| !data.entries || typeof data.entries!=='object')throw Error('Not a library backup');
+            if(!confirm('Import this backup? Existing books and wishlist items will be merged, not erased.'))return;
+            Object.keys(data.entries).forEach(function(key){
+                if(!(key==='books'||key==='reading_session'||key==='reading_users'||key.startsWith('reading_')))return;
+                var incoming=data.entries[key];if(typeof incoming!=='string')return;
+                if(key.startsWith('reading_books_')||key.startsWith('reading_wishlist_')||key==='books'){
+                    var a=JSON.parse(localStorage.getItem(key)||'[]'),b=JSON.parse(incoming);
+                    if(Array.isArray(a)&&Array.isArray(b)) {var seen=new Set(a.map(function(x){return String(x.id)}));b.forEach(function(x){if(x&&typeof x==='object'&&!seen.has(String(x.id))){a.push(x);seen.add(String(x.id));}});localStorage.setItem(key,JSON.stringify(a));}
+                }else if(localStorage.getItem(key)===null){localStorage.setItem(key,incoming);}
+            });
+            // Keep current session and user; load books from currently selected user.
+            var k=getBookKey(currentUser); books=JSON.parse(localStorage.getItem(k)||'[]');if(!Array.isArray(books))books=[];
+            renderBooks();updateStats();renderWishlist();showToast('Backup imported. Your books were merged.','success');
+        }catch(e){showToast('Could not import this file. Use an exported library JSON backup.','error');}
+    }
+
+    function showToast(msg, type) { toast.textContent = msg; toast.className = "toast show"; toast.style.background = type === "error" ? "#ff6b6b" : "var(--dark-pink)"; setTimeout(function() { toast.className = "toast"; }, 3500); }
+    </script>
+
+<script>
+// Personal music playlist; no preset songs or bundled recordings.
+const cozyTracks=[];
+let musicIndex=-1, musicShuffle=false, musicRepeat=0;
+const musicFiles=new Map();
+const musicAudio=document.getElementById('cozyAudio');
+const musicSafe=t=>String(t).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function musicStore(k,v){try{localStorage.setItem('cozy_music_'+k,JSON.stringify(v));}catch(e){}}
+function musicGet(k,d){try{const v=JSON.parse(localStorage.getItem('cozy_music_'+k));return v===null?d:v;}catch(e){return d;}}
+function musicStatus(t){document.getElementById('musicStatus').textContent=t;}
+function musicUpdate(){const t=cozyTracks[musicIndex];document.getElementById('musicCurrent').textContent=t?t[0]:'No music added yet';document.getElementById('musicArtist').textContent=t?'Your personal playlist':'Add MP3 files to create your playlist';document.getElementById('musicPlay').textContent=musicAudio.paused?'▶ Play':'❚❚ Pause';musicRenderList();}
+function musicSelect(i,play=false){if(i<0||i>=cozyTracks.length)return;musicIndex=i;musicStore('track',i);musicAudio.pause();musicAudio.removeAttribute('src');musicAudio.load();document.getElementById('musicProgress').value=0;musicUpdate();musicStatus('Ready to play: '+cozyTracks[i][0]);if(play)musicPlayPause();}
+function musicOpenDB(){return new Promise((resolve,reject)=>{if(!('indexedDB' in window)){reject(Error('Browser audio storage unavailable'));return;}const req=indexedDB.open('cozy_library_audio_v1',1);req.onupgradeneeded=()=>{if(!req.result.objectStoreNames.contains('tracks'))req.result.createObjectStore('tracks');};req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error);});}
+async function musicDBPut(key,blob){const db=await musicOpenDB();return new Promise((resolve,reject)=>{const tx=db.transaction('tracks','readwrite');tx.objectStore('tracks').put(blob,key);tx.oncomplete=()=>{db.close();resolve()};tx.onerror=()=>{db.close();reject(tx.error)};});}
+async function musicDBDelete(key){const db=await musicOpenDB();return new Promise((resolve,reject)=>{const tx=db.transaction('tracks','readwrite');tx.objectStore('tracks').delete(key);tx.oncomplete=()=>{db.close();resolve()};tx.onerror=()=>{db.close();reject(tx.error)};});}
+async function musicDBGetAll(){const db=await musicOpenDB();return new Promise((resolve,reject)=>{const tx=db.transaction('tracks','readonly'),store=tx.objectStore('tracks'),rq=store.getAllKeys();rq.onsuccess=()=>{Promise.all(rq.result.map(k=>new Promise((res,rej)=>{const r=store.get(k);r.onsuccess=()=>res([k,r.result]);r.onerror=()=>rej(r.error)}))).then(resolve,reject)};rq.onerror=()=>reject(rq.error);tx.oncomplete=()=>db.close();});}
+function musicAttach(i,file){const prev=musicFiles.get(i);if(prev)URL.revokeObjectURL(prev);musicFiles.set(i,URL.createObjectURL(file));}
+async function musicLoadFiles(ev){const files=Array.from(ev.target.files||[]);ev.target.value='';if(!files.length)return;let added=0,saved=0,last=-1;musicStatus('Adding audio…');for(const file of files){if(!(file.type.startsWith('audio/')||/\.(mp3|m4a|wav|ogg|flac|aac)$/i.test(file.name)))continue;const i=cozyTracks.length;const key='personal_song_'+Date.now()+'_'+i;cozyTracks.push([file.name.replace(/\.[^.]+$/,''),'My uploaded music',key]);musicAttach(i,file);last=i;added++;try{await musicDBPut(key,file);saved++;}catch(e){}}if(added){musicSelect(last,true);musicStatus(added+' audio file(s) added; '+saved+' saved for future visits in this browser.');}else musicStatus('Please select MP3, M4A, WAV or another supported audio file.');}
+async function musicPlayPause(){if(!musicAudio.paused){musicAudio.pause();musicUpdate();return;}if(musicIndex<0){musicStatus('Add your MP3 files first.');return;}const src=musicFiles.get(musicIndex);if(!src){musicStatus('Audio is unavailable. Please upload it again.');return;}if(musicAudio.src!==src)musicAudio.src=src;try{await musicAudio.play();musicStatus('♫ Now playing · '+cozyTracks[musicIndex][0]);}catch(e){musicStatus('Could not play this audio. Try MP3 or M4A.');}musicUpdate();}
+function musicStep(dir){if(!cozyTracks.length){musicStatus('Add your music first.');return;}let i;if(musicShuffle)i=Math.floor(Math.random()*cozyTracks.length);else i=(musicIndex+dir+cozyTracks.length)%cozyTracks.length;musicSelect(i,true);}
+function musicNext(){musicStep(1)}function musicPrev(){musicStep(-1)}
+function musicSetVolume(v){musicAudio.volume=Number(v)/100;musicStore('volume',Number(v));}
+function musicSeek(v){if(musicAudio.duration&&isFinite(musicAudio.duration))musicAudio.currentTime=Number(v)/1000*musicAudio.duration;}
+function musicToggleShuffle(){musicShuffle=!musicShuffle;musicStore('shuffle',musicShuffle);document.getElementById('musicShuffle').textContent='⇄ Shuffle '+(musicShuffle?'on':'off');}
+function musicToggleRepeat(){musicRepeat=(musicRepeat+1)%3;musicStore('repeat',musicRepeat);document.getElementById('musicRepeat').textContent=['↻ Repeat all','↻ Repeat one','↻ Repeat off'][musicRepeat];}
+function toggleMusicDetails(){const p=document.getElementById('musicExpand');p.hidden=!p.hidden;document.getElementById('musicToggle').textContent=p.hidden?'My music ▾':'Hide music ▴';if(!p.hidden)musicRenderList();}
+async function musicRemove(i){if(!cozyTracks[i])return;if(!confirm('Remove "'+cozyTracks[i][0]+'" from your playlist?'))return;const identifier=cozyTracks[i][2];if(identifier){try{await musicDBDelete(identifier);}catch(e){}}const url=musicFiles.get(i);if(url)URL.revokeObjectURL(url);musicAudio.pause();musicAudio.removeAttribute('src');musicAudio.load();cozyTracks.splice(i,1);const urls=[...musicFiles.values()];urls.splice(i,1);musicFiles.clear();urls.forEach((url,n)=>musicFiles.set(n,url));musicIndex=cozyTracks.length?Math.min(i,cozyTracks.length-1):-1;musicUpdate();musicStatus('Song removed from your playlist.');}
+function musicRenderList(){const el=document.getElementById('musicList');const search=document.getElementById('musicSearch');if(!el||!search)return;const q=(search.value||'').toLowerCase();el.innerHTML=cozyTracks.map((t,i)=>({t,i})).filter(o=>o.t[0].toLowerCase().includes(q)).map(({t,i})=>`<div class="music-track ${i===musicIndex?'active':''}"><button style="background:none;border:0;text-align:left;flex:1;min-width:0;cursor:pointer;display:flex;gap:9px;color:inherit" type="button" onclick="musicSelect(${i},true)"><span class="music-num">${String(i+1).padStart(2,'0')}</span><span class="music-track-text"><div class="music-track-title">${musicSafe(t[0])} ♫</div><div class="music-track-artist">Your music · Ready to play</div></span></button><button class="music-remove" type="button" onclick="musicRemove(${i})" title="Remove song">×</button></div>`).join('')||'<p class="music-empty">No uploaded music yet. Click “＋ Add your MP3 / audio” to begin.</p>';}
+musicAudio.addEventListener('ended',()=>{if(musicRepeat===1){musicAudio.currentTime=0;musicAudio.play().catch(()=>{});return;}if(musicRepeat===2){musicAudio.pause();musicUpdate();return;}musicNext();});
+musicAudio.addEventListener('pause',musicUpdate);musicAudio.addEventListener('play',musicUpdate);
+musicAudio.addEventListener('timeupdate',()=>{const slider=document.getElementById('musicProgress');if(musicAudio.duration&&isFinite(musicAudio.duration))slider.value=Math.round(musicAudio.currentTime/musicAudio.duration*1000);});
+musicAudio.addEventListener('error',()=>musicStatus('Unable to play this file. Please try another audio format.'));
+(async function(){const v=musicGet('volume',35);document.getElementById('musicVolume').value=v;musicAudio.volume=Number(v)/100;musicShuffle=musicGet('shuffle',false);musicRepeat=musicGet('repeat',0);document.getElementById('musicShuffle').textContent='⇄ Shuffle '+(musicShuffle?'on':'off');document.getElementById('musicRepeat').textContent=['↻ Repeat all','↻ Repeat one','↻ Repeat off'][musicRepeat];try{const entries=await musicDBGetAll();for(const [key,file] of entries){if(!(file instanceof Blob))continue;const i=cozyTracks.length;const name=file.name?file.name.replace(/\.[^.]+$/,''):'Saved audio '+(i+1);cozyTracks.push([name,'My uploaded music',key]);musicAttach(i,file);}musicStatus(cozyTracks.length?cozyTracks.length+' saved audio file(s) restored. Press Play to listen.':'Your playlist is empty. Add MP3 files to start listening.');}catch(e){musicStatus('Add MP3 files to listen. Browser audio saving might be unavailable.');}musicIndex=cozyTracks.length?0:-1;musicUpdate();})();
+</script>
+
+</body>
+</html>
