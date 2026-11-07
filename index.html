@@ -638,6 +638,34 @@
             .review-collapsible .description-text:not(.review-expanded)::after { display: none; }
         }
 
+        /* Keep review controls together in one neat, responsive row. */
+        .review-inline-actions {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        .review-inline-actions .review-read-more,
+        .review-inline-actions .review-edit-btn {
+            display: inline-flex;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+            min-height: 40px;
+            white-space: nowrap;
+        }
+        .review-inline-actions .review-read-more[hidden] { display: none !important; }
+        @media (max-width: 600px) {
+            .review-inline-actions { gap: 8px; }
+            .review-inline-actions .review-read-more,
+            .review-inline-actions .review-edit-btn {
+                padding: 9px 12px;
+                font-size: .76rem;
+            }
+        }
+
         /* EDIT FINAL THOUGHTS — independent of Edit Book. */
         .review-edit-actions { display:flex; justify-content:center; gap:9px; margin-top:12px; flex-wrap:wrap; }
         .review-edit-btn, .review-save-btn, .review-cancel-btn {
@@ -1504,7 +1532,7 @@
             var cv = c ? '<img src="' + c + '" alt="' + n + '" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"><i class="fas fa-book" style="display:none"></i>' : '<i class="fas fa-book"></i>';
             var badge = b.finished ? '<div class="finished-badge">Finished</div>' : '<div class="reading-badge">Reading</div>';
             var desc = '';
-            if (b.finished) desc = d ? '<div class="description-section review-collapsible"><div class="description-label"><i class="fas fa-pen-fancy"></i> Final Thoughts</div><div class="description-text"><div class="review-copy">' + d + '</div></div><button type="button" class="review-read-more" aria-expanded="false" onclick="toggleFullReview(this)">Read more ↓</button><div class="review-edit-actions"><button type="button" class="review-edit-btn" onclick="editFinalThoughts(' + b.id + ')">✎ Edit Final Thoughts</button></div><div class="review-edit-form" id="review-edit-form-' + b.id + '" hidden><label for="review-edit-' + b.id + '">Edit your review</label><textarea class="review-edit-textarea" id="review-edit-' + b.id + '" placeholder="Share your thoughts about this book..."></textarea><div class="review-edit-actions"><button type="button" class="review-save-btn" onclick="saveFinalThoughtsEdit(' + b.id + ')">Save changes ♡</button><button type="button" class="review-cancel-btn" onclick="cancelFinalThoughtsEdit(' + b.id + ')">Cancel</button></div></div></div>' : '<div class="description-section"><div class="description-label"><i class="fas fa-pen-fancy"></i> Final Thoughts</div><div class="finished-form-row"><textarea class="description-input" id="desc-' + b.id + '" placeholder="Share your final thoughts..."></textarea><button class="save-description-btn" onclick="saveDesc(' + b.id + ')"><i class="fas fa-save"></i> Save</button></div></div>';
+            if (b.finished) desc = d ? '<div class="description-section review-collapsible"><div class="description-label"><i class="fas fa-pen-fancy"></i> Final Thoughts</div><div class="description-text"><div class="review-copy">' + d + '</div></div><div class="review-inline-actions"><button type="button" class="review-read-more" aria-expanded="false" onclick="toggleFullReview(this)">Read more ↓</button><button type="button" class="review-edit-btn" onclick="editFinalThoughts(' + b.id + ')">✎ Edit Final Thoughts</button></div><div class="review-edit-form" id="review-edit-form-' + b.id + '" hidden><label for="review-edit-' + b.id + '">Edit your review</label><textarea class="review-edit-textarea" id="review-edit-' + b.id + '" placeholder="Share your thoughts about this book..."></textarea><div class="review-edit-actions"><button type="button" class="review-save-btn" onclick="saveFinalThoughtsEdit(' + b.id + ')">Save changes ♡</button><button type="button" class="review-cancel-btn" onclick="cancelFinalThoughtsEdit(' + b.id + ')">Cancel</button></div></div></div>' : '<div class="description-section"><div class="description-label"><i class="fas fa-pen-fancy"></i> Final Thoughts</div><div class="finished-form-row"><textarea class="description-input" id="desc-' + b.id + '" placeholder="Share your final thoughts..."></textarea><button class="save-description-btn" onclick="saveDesc(' + b.id + ')"><i class="fas fa-save"></i> Save</button></div></div>';
             var mk = !b.finished ? '<button class="btn btn-secondary" onclick="markFin(' + b.id + ')"><i class="fas fa-check"></i> Mark Finished</button>' : '';
             return '<div class="book-card">' + badge + '<div class="book-card-main"><div class="book-cover">' + cv + '</div><div class="book-info"><h3 class="book-title">' + n + '</h3><div class="book-meta-row">' + meta + '</div>' + feel + prog + stars + '</div></div>' + desc + '<div class="book-actions"><button class="btn btn-edit" onclick="editBook(' + b.id + ')"><i class="fas fa-edit"></i> Edit</button>' + mk + '<button class="btn btn-danger" onclick="delBook(' + b.id + ')"><i class="fas fa-trash"></i> Delete</button></div></div>';
         }).join('');
@@ -1534,7 +1562,8 @@
 
     // Expand long review cards only when the reader asks; text is never shortened or deleted.
     function toggleFullReview(button) {
-        var text = button.previousElementSibling;
+        var section = button.closest('.review-collapsible');
+        var text = section && section.querySelector('.description-text');
         if (!text) return;
         var expanded = text.classList.toggle('review-expanded');
         button.textContent = expanded ? 'Show less ↑' : 'Read more ↓';
