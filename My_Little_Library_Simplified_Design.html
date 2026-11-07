@@ -637,6 +637,26 @@
             .review-collapsible .description-text:not(.review-expanded) { max-height: none; overflow: visible; }
             .review-collapsible .description-text:not(.review-expanded)::after { display: none; }
         }
+
+        /* EDIT FINAL THOUGHTS — independent of Edit Book. */
+        .review-edit-actions { display:flex; justify-content:center; gap:9px; margin-top:12px; flex-wrap:wrap; }
+        .review-edit-btn, .review-save-btn, .review-cancel-btn {
+            border-radius:999px; padding:10px 17px; font:600 .83rem 'Poppins',sans-serif;
+            border:1px solid #b9cbb3; cursor:pointer; max-width:100%;
+        }
+        .review-edit-btn, .review-cancel-btn { background:#edf3e9; color:#344D3B; }
+        .review-save-btn { background:#58745B; color:white; border-color:#58745B; }
+        .review-edit-btn:hover, .review-cancel-btn:hover { background:#e0ecdb; }
+        .review-save-btn:hover { background:#344D3B; }
+        .review-edit-form { margin-top:14px; display:flex; flex-direction:column; gap:10px; }
+        .review-edit-form[hidden] { display:none !important; }
+        .review-edit-form label { color:#344D3B; font-size:.85rem; font-weight:600; }
+        .review-edit-textarea { width:100%; min-height:170px; resize:vertical; box-sizing:border-box;
+            padding:15px; font:400 .9rem/1.75 'Poppins',sans-serif; color:#303B32;
+            border:1px solid #b9cbb3; border-radius:13px; background:#fffdfa;
+        }
+        .review-edit-textarea:focus-visible { outline:3px solid #8da88b; outline-offset:2px; }
+        @media (max-width:600px) { .review-edit-form { gap:9px; } .review-edit-textarea { min-height:190px; } }
 </style>
 </head>
 <body>
@@ -1484,7 +1504,7 @@
             var cv = c ? '<img src="' + c + '" alt="' + n + '" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"><i class="fas fa-book" style="display:none"></i>' : '<i class="fas fa-book"></i>';
             var badge = b.finished ? '<div class="finished-badge">Finished</div>' : '<div class="reading-badge">Reading</div>';
             var desc = '';
-            if (b.finished) desc = d ? '<div class="description-section review-collapsible"><div class="description-label"><i class="fas fa-pen-fancy"></i> Final Thoughts</div><div class="description-text"><div class="review-copy">' + d + '</div></div><button type="button" class="review-read-more" aria-expanded="false" onclick="toggleFullReview(this)">Read more ↓</button></div>' : '<div class="description-section"><div class="description-label"><i class="fas fa-pen-fancy"></i> Final Thoughts</div><div class="finished-form-row"><textarea class="description-input" id="desc-' + b.id + '" placeholder="Share your final thoughts..."></textarea><button class="save-description-btn" onclick="saveDesc(' + b.id + ')"><i class="fas fa-save"></i> Save</button></div></div>';
+            if (b.finished) desc = d ? '<div class="description-section review-collapsible"><div class="description-label"><i class="fas fa-pen-fancy"></i> Final Thoughts</div><div class="description-text"><div class="review-copy">' + d + '</div></div><button type="button" class="review-read-more" aria-expanded="false" onclick="toggleFullReview(this)">Read more ↓</button><div class="review-edit-actions"><button type="button" class="review-edit-btn" onclick="editFinalThoughts(' + b.id + ')">✎ Edit Final Thoughts</button></div><div class="review-edit-form" id="review-edit-form-' + b.id + '" hidden><label for="review-edit-' + b.id + '">Edit your review</label><textarea class="review-edit-textarea" id="review-edit-' + b.id + '" placeholder="Share your thoughts about this book..."></textarea><div class="review-edit-actions"><button type="button" class="review-save-btn" onclick="saveFinalThoughtsEdit(' + b.id + ')">Save changes ♡</button><button type="button" class="review-cancel-btn" onclick="cancelFinalThoughtsEdit(' + b.id + ')">Cancel</button></div></div></div>' : '<div class="description-section"><div class="description-label"><i class="fas fa-pen-fancy"></i> Final Thoughts</div><div class="finished-form-row"><textarea class="description-input" id="desc-' + b.id + '" placeholder="Share your final thoughts..."></textarea><button class="save-description-btn" onclick="saveDesc(' + b.id + ')"><i class="fas fa-save"></i> Save</button></div></div>';
             var mk = !b.finished ? '<button class="btn btn-secondary" onclick="markFin(' + b.id + ')"><i class="fas fa-check"></i> Mark Finished</button>' : '';
             return '<div class="book-card">' + badge + '<div class="book-card-main"><div class="book-cover">' + cv + '</div><div class="book-info"><h3 class="book-title">' + n + '</h3><div class="book-meta-row">' + meta + '</div>' + feel + prog + stars + '</div></div>' + desc + '<div class="book-actions"><button class="btn btn-edit" onclick="editBook(' + b.id + ')"><i class="fas fa-edit"></i> Edit</button>' + mk + '<button class="btn btn-danger" onclick="delBook(' + b.id + ')"><i class="fas fa-trash"></i> Delete</button></div></div>';
         }).join('');
@@ -1519,6 +1539,41 @@
         var expanded = text.classList.toggle('review-expanded');
         button.textContent = expanded ? 'Show less ↑' : 'Read more ↓';
         button.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    }
+
+    // Edit an existing Final Thoughts review without changing the book itself.
+    // Cancel never touches stored data; Save uses the existing saveBooks() method.
+    function editFinalThoughts(id) {
+        var book = books.find(function(b) { return b.id === id; });
+        var panel = document.getElementById('review-edit-form-' + id);
+        var field = document.getElementById('review-edit-' + id);
+        if (!book || !panel || !field) return;
+        field.value = book.description || '';
+        panel.hidden = false;
+        field.focus();
+    }
+
+    function cancelFinalThoughtsEdit(id) {
+        var panel = document.getElementById('review-edit-form-' + id);
+        if (panel) panel.hidden = true;
+    }
+
+    async function saveFinalThoughtsEdit(id) {
+        var field = document.getElementById('review-edit-' + id);
+        var index = books.findIndex(function(b) { return b.id === id; });
+        if (!field || index === -1) return;
+        var updated = field.value.trim();
+        if (!updated) { showToast('Please write a review before saving.', 'error'); field.focus(); return; }
+        var previous = books[index].description;
+        books[index].description = updated;
+        var success = await saveBooks();
+        if (success === false) {
+            books[index].description = previous;
+            showToast('Unable to save. Please export a backup and check browser storage.', 'error');
+            return;
+        }
+        renderBooks();
+        showToast('Your Final Thoughts have been updated ♡', 'success');
     }
 
     function esc(t) { var d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
