@@ -855,7 +855,7 @@
             </form>
         </div>
 
-        <div class="backup-bar"><span>🌿 Keep your books safe when updating this page</span><button type="button" class="library-backup-btn" onclick="exportLibraryBackup()">↓ Export backup</button><button type="button" class="library-backup-btn" onclick="document.getElementById('backupImportFile').click()">↑ Import backup</button><input type="file" id="backupImportFile" accept="application/json,.json" style="display:none" onchange="importLibraryBackup(event)"></div>
+        <div class="backup-bar"><span>🌿 Books saved in larger browser storage · Export backups regularly</span><button type="button" class="library-backup-btn" onclick="exportLibraryBackup()">↓ Export backup</button><button type="button" class="library-backup-btn" onclick="document.getElementById('backupImportFile').click()">↑ Import backup</button><input type="file" id="backupImportFile" accept="application/json,.json" style="display:none" onchange="importLibraryBackup(event)"></div>
         <div class="books-container" id="booksArea">
             <div class="tabs">
                 <button class="tab active" data-tab="all">All Books</button>
@@ -968,8 +968,7 @@
             if (Array.isArray(ob) && ob.length && !localStorage.getItem(getBookKey(username))) {
                 localStorage.setItem(getBookKey(username), old);
             }
-            localStorage.removeItem("books");
-            if (firebaseReady && Array.isArray(ob)) pushToFirebase(username, ob);
+            // Keep the original legacy copy until IndexedDB migration is verified.
         } catch (e) {}
     }
     function showApp() {
@@ -978,32 +977,128 @@
         if (!firebaseReady) updateSyncUI('local-only');
     }
 
-    // FIREBASE
-    function pushToFirebase(username, arr) { if (!firebaseReady) return; var o = {}; arr.forEach(function(b) { o[b.id] = b; }); db.ref('books/' + username.toLowerCase()).set(o).catch(function(e) {}); }
-    function loadFromFirebase(username) { return new Promise(function(resolve) { if (!firebaseReady) { resolve(null); return; } db.ref('books/' + username.toLowerCase()).once('value').then(function(s) { var d = s.val(); resolve(d ? Object.values(d) : null); }).catch(function() { resolve(null); }); }); }
-    function watchFirebase(username) { if (!firebaseReady) return; db.ref('books/' + username.toLowerCase()).on('value', function(s) { var d = s.val(), nb = d ? Object.values(d) : []; if (JSON.stringify(nb) !== JSON.stringify(books)) { books = nb; cacheLocal(); renderBooks(); updateStats(); } }); }
-
-    // BOOKS
+    // BOOK STORAGE: IndexedDB stores full books and images beyond localStorage's small quota.
+    // Migration copies old localStorage books, verifies the IndexedDB write, THEN releases
+    // only the migrated legacy reading_books_* key. Never erase the old data on failure.
     var books = [];
-    function cacheLocal() {
-        try { localStorage.setItem(getBookKey(currentUser), JSON.stringify(books)); return true; }
-        catch (e) {
-            showToast('Browser storage is full. Your new changes may not be saved. Export a backup or use a smaller cover image.', 'error');
+    var libraryDBPromise = null;
+    function openLibraryDB() {
+        if (!libraryDBPromise) libraryDBPromise = new Promise(function(resolve, reject) {
+            if (!window.indexedDB) { reject(Error('IndexedDB is unavailable')); return; }
+            var request = indexedDB.open('my_little_library_books_v1', 1);
+            request.onupgradeneeded = function() {
+                if (!request.result.objectStoreNames.contains('shelves')) request.result.createObjectStore('shelves');
+            };
+            request.onsuccess = function() { resolve(request.result); };
+            request.onerror = function() { reject(request.error || Error('Cannot open book storage')); };
+            request.onblocked = function() { reject(Error('Book storage is blocked by another tab')); };
+        });
+        return libraryDBPromise;
+    }
+    async function readDBShelf(profileKey) {
+        var database = await openLibraryDB();
+        return new Promise(function(resolve, reject) {
+            var request = database.transaction('shelves', 'readonly').objectStore('shelves').get(profileKey);
+            request.onsuccess = function() { resolve(Array.isArray(request.result) ? request.result : []); };
+            request.onerror = function() { reject(request.error || Error('Could not read shelf')); };
+        });
+    }
+    async function writeDBShelf(profileKey, value) {
+        var database = await openLibraryDB();
+        return new Promise(function(resolve, reject) {
+            var tx = database.transaction('shelves', 'readwrite');
+            tx.objectStore('shelves').put(value, profileKey);
+            tx.oncomplete = function() { resolve(true); };
+            tx.onerror = function() { reject(tx.error || Error('Could not save shelf')); };
+            tx.onabort = function() { reject(tx.error || Error('Book save was cancelled')); };
+        });
+    }
+    async function listDBShelves() {
+        var database = await openLibraryDB();
+        return new Promise(function(resolve, reject) {
+            var tx = database.transaction('shelves', 'readonly');
+            var store = tx.objectStore('shelves');
+            var request = store.openCursor(), result = {};
+            request.onsuccess = function() {
+                var cursor = request.result;
+                if (cursor) { if (Array.isArray(cursor.value)) result[String(cursor.key)] = cursor.value; cursor.continue(); }
+                else resolve(result);
+            };
+            request.onerror = function() { reject(request.error || Error('Could not enumerate shelves')); };
+        });
+    }
+    function mergeByBookId(existing, incoming) {
+        var result = Array.isArray(existing) ? existing.slice() : [];
+        var found = new Set(result.map(function(item) { return String(item.id); }));
+        (Array.isArray(incoming) ? incoming : []).forEach(function(item) {
+            if (item && typeof item === 'object' && !found.has(String(item.id))) {
+                result.push(item); found.add(String(item.id));
+            }
+        });
+        return result;
+    }
+    function readLegacyShelf(profileKey) {
+        try { var d = JSON.parse(localStorage.getItem(profileKey) || '[]'); return Array.isArray(d) ? d : []; }
+        catch (error) { return []; }
+    }
+    async function persistShelf(profileKey, records) {
+        await writeDBShelf(profileKey, records);
+        var check = await readDBShelf(profileKey);
+        if (check.length !== records.length) throw Error('Saved book count does not match');
+        // Only after verifying the copy do we free this single large legacy key.
+        try { localStorage.removeItem(profileKey); } catch (_) {}
+        return true;
+    }
+    async function loadUserBooks() {
+        var key = getBookKey(currentUser);
+        try {
+            var stored = await readDBShelf(key);
+            var legacy = readLegacyShelf(key);
+            var cloud = await loadFromFirebase(currentUser);
+            // Never replace a larger local shelf with a smaller remote shelf.
+            books = mergeByBookId(mergeByBookId(stored, legacy), cloud);
+            await persistShelf(key, books);
+            if (firebaseReady) watchFirebase(currentUser);
+        } catch (error) {
+            books = mergeByBookId(books, readLegacyShelf(key));
+            alert('Could not open your larger book storage. Existing books have NOT been deleted. Please export a backup. ' + error.message);
+        }
+        renderBooks(); updateStats();
+    }
+    async function saveBooks() {
+        try {
+            await persistShelf(getBookKey(currentUser), books);
+            if (firebaseReady) pushToFirebase(currentUser, books);
+            return true;
+        } catch (error) {
+            alert('Your book is visible but NOT saved permanently. Export a backup before closing this page. ' + error.message);
             return false;
         }
     }
-
-    async function loadUserBooks() {
-        var fb = await loadFromFirebase(currentUser);
-        if (fb && fb.length > 0) { books = fb; cacheLocal(); renderBooks(); updateStats(); watchFirebase(currentUser); return; }
-        try { var s = localStorage.getItem(getBookKey(currentUser)); books = s ? JSON.parse(s) : []; if (!Array.isArray(books)) books = []; } catch (e) { books = []; }
-        renderBooks(); updateStats();
-        if (firebaseReady && books.length > 0) { pushToFirebase(currentUser, books); watchFirebase(currentUser); }
-        else if (firebaseReady) { watchFirebase(currentUser); }
-        recompressOldImages();
+    // Cloud support remains optional, but cloud updates merge rather than replace local books.
+    function pushToFirebase(username, arr) {
+        if (!firebaseReady) return;
+        var object = {}; arr.forEach(function(b) { object[b.id] = b; });
+        db.ref('books/' + username.toLowerCase()).set(object).catch(function() {});
     }
-
-    async function saveBooks() { const saved = cacheLocal(); if (saved && firebaseReady) pushToFirebase(currentUser, books); return saved; }
+    function loadFromFirebase(username) {
+        return new Promise(function(resolve) {
+            if (!firebaseReady) { resolve([]); return; }
+            db.ref('books/' + username.toLowerCase()).once('value').then(function(s) {
+                var d = s.val(); resolve(d ? Object.values(d) : []);
+            }).catch(function() { resolve([]); });
+        });
+    }
+    function watchFirebase(username) {
+        if (!firebaseReady) return;
+        db.ref('books/' + username.toLowerCase()).on('value', async function(s) {
+            var d = s.val(), remote = d ? Object.values(d) : [];
+            var combined = mergeByBookId(books, remote);
+            if (combined.length === books.length) return;
+            books = combined;
+            if (await saveBooks()) { renderBooks(); updateStats(); }
+        });
+    }
 
     // HIGH-QUALITY BOOK COVERS
     // Keep existing saved cover data as-is. Never recompress older book covers.
@@ -1737,59 +1832,76 @@
             action('Added to shelf ✓',function(){
                 if(!confirm('Move "'+item.name+'" to your reading shelf?'))return;
                 var newBook={id:Date.now()+Math.floor(Math.random()*10000),name:item.name,author:item.author||'',cover:item.cover||'',genre:'Other',pages:0,feeling:'',start:'',end:'',progress:0,rating:0,finished:false,description:''};
-                books.push(newBook);saveBooks().then(function(){putWishlist(getWishlist().filter(function(b){return String(b.id)!==String(item.id)}));renderBooks();updateStats();showToast('Book moved to your reading shelf!','success');});
+                books.push(newBook);saveBooks().then(function(saved){if(saved){putWishlist(getWishlist().filter(function(b){return String(b.id)!==String(item.id)}));renderBooks();updateStats();showToast('Book moved to your reading shelf!','success');}});
             });
             if(item.link && /^https?:\/\//i.test(item.link)) {var a=document.createElement('a');a.textContent='Visit store ↗';a.href=item.link;a.rel='noopener noreferrer';a.target='_blank';a.className='wish-small';actions.append(a);}
             main.append(actions);card.append(cover,main);host.append(card);
         });
     }
-    // Always export the LIVE bookshelf, even if localStorage is full or stale.
-    // Do not change stored entries here; backups are read-only snapshots.
-    function exportLibraryBackup() {
-        var data={type:'my-little-library-backup',version:1,exportedAt:new Date().toISOString(),entries:{}};
-        for(var i=0;i<localStorage.length;i++) {
-            var k=localStorage.key(i);
-            if(k==='books'||k==='reading_session'||k==='reading_users'||k.startsWith('reading_')) data.entries[k]=localStorage.getItem(k);
-        }
-        var currentKey=getBookKey(currentUser);
-        if(Array.isArray(books)) data.entries[currentKey]=JSON.stringify(books);
-        var payload=JSON.stringify(data,null,2);
-        // Verify the exported shelf is exactly the same as what the dashboard uses.
-        if(JSON.parse(data.entries[currentKey]).length!==books.length) {
-            alert('Backup verification failed. Your data has not been changed.');return;
-        }
-        var blob=new Blob([payload],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');
-        a.href=url;a.download='my-little-library-backup-'+new Date().toISOString().slice(0,10)+'.json';document.body.append(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url)},1000);
-        showToast('Backup exported with all '+books.length+' currently displayed books.','success');
+    // Export all IndexedDB profiles AND the currently visible shelf, preserving
+    // the original JSON backup format for older versions of the website.
+    async function exportLibraryBackup() {
+        try {
+            var data = {type:'my-little-library-backup', version:1, exportedAt:new Date().toISOString(), entries:{}};
+            for (var i=0; i<localStorage.length; i++) {
+                var k=localStorage.key(i);
+                if (k==='books'||k==='reading_session'||k==='reading_users'||k.startsWith('reading_')) data.entries[k]=localStorage.getItem(k);
+            }
+            var collections = await listDBShelves();
+            Object.keys(collections).forEach(function(key) {
+                data.entries[key] = JSON.stringify(mergeByBookId(collections[key],readLegacyShelf(key)));
+            });
+            var currentKey = getBookKey(currentUser);
+            var saved = data.entries[currentKey] ? JSON.parse(data.entries[currentKey]) : [];
+            // The books currently visible are vital if the most recent save failed.
+            data.entries[currentKey]=JSON.stringify(mergeByBookId(saved,books));
+            var confirmedCount=JSON.parse(data.entries[currentKey]).length;
+            if (confirmedCount < books.length) throw Error('Not all visible books were included');
+            var blob = new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+            var url=URL.createObjectURL(blob), a=document.createElement('a');
+            a.href=url;a.download='my-little-library-backup-'+new Date().toISOString().slice(0,10)+'.json';
+            document.body.append(a);a.click();a.remove();
+            setTimeout(function(){URL.revokeObjectURL(url);},1500);
+            showToast('Backup downloaded: '+confirmedCount+' books on your main shelf.','success');
+        } catch(error) { alert('Backup failed; do not close the page. '+error.message); }
     }
     async function importLibraryBackup(event) {
-        var file=event.target.files[0];event.target.value='';if(!file)return;
+        var file=event.target.files[0]; event.target.value=''; if(!file)return;
         try {
             var data=JSON.parse(await file.text());
-            if(!data || data.type!=='my-little-library-backup'|| !data.entries || typeof data.entries!=='object')throw Error('Not a library backup');
-            if(!confirm('Import this backup? Existing books and wishlist items will be merged, not erased. Export your current shelf first.'))return;
-            var previousBooks=books.slice();
-            var errors=[];
-            Object.keys(data.entries).forEach(function(key){
-                if(!(key==='books'||key==='reading_session'||key==='reading_users'||key.startsWith('reading_')))return;
-                var incoming=data.entries[key];if(typeof incoming!=='string')return;
-                if(key.startsWith('reading_books_')||key.startsWith('reading_wishlist_')||key==='books'){
-                    var a=JSON.parse(localStorage.getItem(key)||'[]'),b=JSON.parse(incoming);
-                    if(Array.isArray(a)&&Array.isArray(b)) {var seen=new Set(a.map(function(x){return String(x.id)}));b.forEach(function(x){if(x&&typeof x==='object'&&!seen.has(String(x.id))){a.push(x);seen.add(String(x.id));}});try {localStorage.setItem(key,JSON.stringify(a));} catch(storageError) {errors.push(key);} }
-                }else if(localStorage.getItem(key)===null){try{localStorage.setItem(key,incoming);}catch(storageError){errors.push(key);}}
-            });
-            // Keep current session and user; load books from currently selected user.
-            var k=getBookKey(currentUser);
-            var restored=JSON.parse(localStorage.getItem(k)||'[]');if(!Array.isArray(restored))restored=[];
-            // Never discard books already visible but not yet persisted.
-            var seen=new Set(restored.map(function(x){return String(x.id)}));
-            previousBooks.forEach(function(x){if(x&&!seen.has(String(x.id))){restored.push(x);seen.add(String(x.id));}});
-            books=restored;
-            var persisted=cacheLocal();
+            if(!data || data.type!=='my-little-library-backup' || !data.entries || typeof data.entries!=='object') throw Error('Invalid library backup');
+            if(!confirm('Merge this backup into your books? Existing books and reviews will be preserved.')) return;
+            var importedShelves=0, failed=[];
+            for(var key of Object.keys(data.entries)) {
+                var incoming=data.entries[key];
+                if(typeof incoming !== 'string') continue;
+                if(key.startsWith('reading_books_') || key==='books') {
+                    var effectiveKey=key==='books'?getBookKey(currentUser):key;
+                    try {
+                        var newEntries=JSON.parse(incoming);
+                        if(!Array.isArray(newEntries)) throw Error('Invalid books');
+                        var oldEntries=mergeByBookId(await readDBShelf(effectiveKey),readLegacyShelf(effectiveKey));
+                        if(effectiveKey===getBookKey(currentUser)) oldEntries=mergeByBookId(oldEntries,books);
+                        var merged=mergeByBookId(oldEntries,newEntries);
+                        await persistShelf(effectiveKey,merged);
+                        if(effectiveKey===getBookKey(currentUser)) books=merged;
+                        importedShelves++;
+                    } catch(error) { failed.push(effectiveKey+': '+error.message); }
+                } else if(key.startsWith('reading_wishlist_')) {
+                    try {
+                        var currentWish=JSON.parse(localStorage.getItem(key)||'[]');
+                        var incomingWish=JSON.parse(incoming);
+                        if(Array.isArray(currentWish)&&Array.isArray(incomingWish))
+                            localStorage.setItem(key,JSON.stringify(mergeByBookId(currentWish,incomingWish)));
+                    } catch(error) {failed.push(key+': '+error.message);}
+                } else if ((key==='reading_session'||key==='reading_users'||key.startsWith('reading_')) && localStorage.getItem(key)===null) {
+                    try { localStorage.setItem(key,incoming); } catch(error) {failed.push(key+': '+error.message);}
+                }
+            }
             renderBooks();updateStats();renderWishlist();
-            if(errors.length||!persisted) alert('Some data could not be saved because browser storage is full. Your currently visible books are still in memory. EXPORT A BACKUP NOW before refreshing.');
-            else showToast('Backup merged successfully. '+books.length+' books on this shelf.','success');
-        }catch(e){showToast('Could not import this file. Use an exported library JSON backup.','error');}
+            if(failed.length) alert('Some items could not be imported: '+failed.join('; ')+'. Keep your original backup.');
+            else alert('Backup imported successfully. Your shelf now shows '+books.length+' books.');
+        } catch(error) {alert('Import failed. Your original backup has not been modified. '+error.message);}
     }
 
     function showToast(msg, type) { toast.textContent = msg; toast.className = "toast show"; toast.style.background = type === "error" ? "#ff6b6b" : "var(--dark-pink)"; setTimeout(function() { toast.className = "toast"; }, 3500); }
