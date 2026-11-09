@@ -666,6 +666,40 @@
             }
         }
 
+        /* FINAL DESKTOP + MOBILE BUTTON ALIGNMENT FIX — never stack review controls. */
+        .description-section.review-collapsible .review-inline-actions {
+            display: flex !important;
+            flex-direction: row !important;
+            flex-wrap: nowrap !important;
+            justify-content: center !important;
+            align-items: center !important;
+            gap: 10px !important;
+            width: 100%;
+            min-width: 0;
+        }
+        .description-section.review-collapsible .review-inline-actions > button {
+            display: inline-flex !important;
+            flex: 0 1 auto !important;
+            width: auto !important;
+            max-width: none;
+            min-width: 0;
+            align-items: center;
+            justify-content: center;
+            margin: 0 !important;
+            white-space: nowrap;
+            line-height: 1.35;
+        }
+        .description-section.review-collapsible .review-inline-actions > button[hidden] {
+            display: none !important;
+        }
+        @media (max-width: 440px) {
+            .description-section.review-collapsible .review-inline-actions { gap: 6px !important; }
+            .description-section.review-collapsible .review-inline-actions > button {
+                padding: 8px 9px !important;
+                font-size: clamp(.62rem, 2.75vw, .76rem) !important;
+            }
+        }
+
         /* EDIT FINAL THOUGHTS — independent of Edit Book. */
         .review-edit-actions { display:flex; justify-content:center; gap:9px; margin-top:12px; flex-wrap:wrap; }
         .review-edit-btn, .review-save-btn, .review-cancel-btn {
@@ -831,49 +865,6 @@
             </div>
             <div class="tab-content active" id="all"><div class="books-list" id="allBooksList"><div class="empty-state"><i class="fas fa-book-reader"></i><p>No books yet.</p></div></div></div>
             <div class="tab-content" id="reading">
-                <!-- RANDOM PICKER HERE -->
-                <div class="random-picker" id="randomPicker" style="display:block">
-                    <div class="picker-title"><i class="fas fa-magic"></i> What shall we read today?</div>
-                    <div class="picker-subtitle">A little surprise from your shelf <span class="picker-count" id="pickerCount">0 books</span></div>
-                    <p id="emptyShelfHint" class="games-caption" style="display:block;margin:0 auto 16px;max-width:530px">🌱 Your shelf is empty. You can explore the games now! Add an unfinished book to enable book-picking activities.</p>
-
-
-                    <div class="mood-picker" id="moodPicker">
-                        <label>What are you in the mood for?</label>
-                        <button type="button" class="mood-chip active" data-mood="Any" onclick="setBookMood('Any',this)">Anything ✨</button>
-                        <button type="button" class="mood-chip" data-mood="Cozy" onclick="setBookMood('Cozy',this)">Cozy ☕</button>
-                        <button type="button" class="mood-chip" data-mood="Mystery" onclick="setBookMood('Mystery',this)">Mystery 🔎</button>
-                        <button type="button" class="mood-chip" data-mood="Romance" onclick="setBookMood('Romance',this)">Romance 🌷</button>
-                        <button type="button" class="mood-chip" data-mood="Fantasy" onclick="setBookMood('Fantasy',this)">Fantasy ✨</button>
-                        <button type="button" class="mood-chip" data-mood="Short Read" onclick="setBookMood('Short Read',this)">Short read 🍃</button>
-                    </div>
-                    <button class="shuffle-btn" id="shuffleBtn" onclick="pickRandomBook()">
-                        <span class="btn-sparkle"></span>
-                        <i class="fas fa-dice"></i> Surprise me!
-                    </button>
-
-                    <details class="daily-inspiration"><summary>✨ Daily inspiration <span>4 gentle ideas</span></summary>
-                    <div class="extra-picker-actions">
-                        <button type="button" class="extra-picker-btn" onclick="pickWhatShouldIRead()"><i class="fas fa-book-open"></i> What should I read next?</button>
-                        <button type="button" class="extra-picker-btn" onclick="pickUniverseBook()"><i class="fas fa-star"></i> Let the universe choose</button>
-                        <button type="button" class="extra-picker-btn" onclick="luckyBookOfTheDay()"><i class="fas fa-clover"></i> Lucky book of the day</button>
-                        <button type="button" class="extra-picker-btn" onclick="giveReadingChallenge()"><i class="fas fa-wand-magic-sparkles"></i> Fun reading challenge</button>
-                    </div>
-
- 
-                    </details>
-
-                   <div class="fun-activity-box" id="funActivityBox">
-                        <div class="fun-activity-title" id="funActivityTitle"></div>
-                        <div class="fun-activity-text" id="funActivityText"></div>
-                    </div>
-
-                    <div class="shuffle-text" id="shuffleText"></div>
-                    <div class="random-result" id="randomResult">
-                        <div id="resultContent"></div>
-                        <button class="pick-again-btn" onclick="pickRandomBook()"><i class="fas fa-redo"></i> Not in the mood? Try another</button>
-                    </div>
-                </div>
                 <details class="reading-activities-drawer" id="readingActivitiesDrawer">
                     <summary><span class="drawer-icon">✦</span><span class="drawer-copy"><strong>Reading playground</strong><small>20 optional little games · Pick, play, and unwind</small></span><span class="drawer-chevron">⌄</span></summary>
                    <section class="reading-games" id="readingGames" aria-label="Reading games">
@@ -1102,6 +1093,7 @@
         var picker = document.getElementById('randomPicker');
         var countEl = document.getElementById('pickerCount');
 
+        if (!picker || !countEl) return; // Picker removed; Reading Playground is retained.
         picker.style.display = 'block';
         var emptyHint = document.getElementById('emptyShelfHint');
         if (emptyHint) emptyHint.style.display = readingBooks.length ? 'none' : 'block';
@@ -1171,7 +1163,7 @@
         var resultDiv = document.getElementById('randomResult');
         var content = document.getElementById('resultContent');
 
-        shuffleText.style.display = 'none';
+        if (shuffleText) shuffleText.style.display = 'none';
 
         var coverHtml = book.cover
             ? '<img src="' + esc(book.cover) + '" alt="" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'"><i class="fas fa-book" style="display:none"></i>'
@@ -1182,7 +1174,9 @@
         if (book.progress > 0) metaHtml += '<span><i class="fas fa-chart-bar"></i> ' + book.progress + '%</span>';
         if (book.rating > 0) metaHtml += '<span><i class="fas fa-star"></i> ' + book.rating + '/5</span>';
 
-        content.innerHTML =
+        var playgroundResult = !content ? document.getElementById('readingGameOutput') : null;
+        if (!content && !playgroundResult) return;
+        var resultMarkup =
             '<div class="result-card">' +
                 '<div class="result-cover">' + coverHtml + '</div>' +
                 '<div class="result-info">' +
@@ -1193,6 +1187,18 @@
             '</div>' +
             '<div class="result-magic"><i class="fas fa-sparkles"></i> The universe has chosen for you!</div>';
 
+        if (!content) {
+            // Show chosen books inside the existing Reading Playground instead.
+            var oldResult = playgroundResult.querySelector('.playground-picked-result');
+            if (oldResult) oldResult.remove();
+            var holder = document.createElement('div');
+            holder.className = 'playground-picked-result';
+            holder.innerHTML = resultMarkup;
+            playgroundResult.appendChild(holder);
+            playgroundResult.classList.add('show');
+            return;
+        }
+        content.innerHTML = resultMarkup;
         resultDiv.style.display = 'block';
         resultDiv.classList.remove('pop-in');
         void resultDiv.offsetWidth;
