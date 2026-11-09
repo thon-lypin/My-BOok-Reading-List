@@ -1478,9 +1478,16 @@
         var name = document.getElementById("bookName").value.trim(); if (!name) { showToast("Enter book name", "error"); return; }
         var prog = document.getElementById("progress").value || 0, end = document.getElementById("endDate").value;
         books.push({ id: Date.now(), name: name, author: document.getElementById("author").value.trim(), pages: parseInt(document.getElementById("pages").value, 10) || 0, feeling: document.getElementById("feeling").value.trim(), start: document.getElementById("startDate").value, end: end, genre: document.getElementById("genre").value, progress: parseInt(prog), rating: selectedRating, finished: end !== "" || prog == 100, description: "", cover: currentImageUrl || bookCoverInput.value });
-        await saveBooks(); renderBooks(); updateStats(); markReadingActivity();
+        var wasSaved = await saveBooks();
+        if (!wasSaved) {
+            // Keep the unsaved book in memory so it can be rescued with Export Backup.
+            renderBooks(); updateStats();
+            alert('Your book is visible, but browser storage is full and it was NOT saved permanently. Please click Export backup NOW, before refreshing or closing this page.');
+            return;
+        }
+        renderBooks(); updateStats(); markReadingActivity();
         bookForm.reset(); selectedRating = 0; updateRatingDisplay(); resetImgPrev();
-        showToast("Book added! It's now in the random picker.", "success");
+        showToast("Book saved successfully!", "success");
     }
 
     function editBook(id) {
@@ -1499,7 +1506,9 @@
         var name = document.getElementById("editBookName").value.trim(); if (!name) { showToast("Enter name", "error"); return; }
         var end = document.getElementById("editEndDate").value, prog = parseInt(document.getElementById("editProgress").value) || 0;
         books[idx] = { id: books[idx].id, name: name, author: document.getElementById("editAuthor").value.trim(), pages: parseInt(document.getElementById("editPages").value, 10) || 0, genre: document.getElementById("editGenre").value, start: document.getElementById("editStartDate").value, end: end, progress: prog, feeling: document.getElementById("editFeeling").value.trim(), rating: editSelectedRating, cover: editCurrentImageUrl || document.getElementById("editBookCover").value, finished: end !== "" || prog === 100, description: books[idx].description || "" };
-        await saveBooks(); renderBooks(); updateStats(); cancelEdit(); showToast("Updated!", "success");
+        var wasSaved = await saveBooks(); renderBooks(); updateStats();
+        if (!wasSaved) { alert('Your changes are visible but have NOT been saved permanently. Export a backup before refreshing.'); return; }
+        cancelEdit(); showToast("Updated and saved!", "success");
     }
 
     function cancelEdit() { editMode.style.display = "none"; formContainer.style.display = "block"; editingBookId = null; editSelectedRating = 0; updateEditRatingDisplay(); editForm.reset(); resetEditImgPrev(); }
@@ -1734,30 +1743,52 @@
             main.append(actions);card.append(cover,main);host.append(card);
         });
     }
-    // Backups include existing reading books, wishlist, goals and game preferences.
+    // Always export the LIVE bookshelf, even if localStorage is full or stale.
+    // Do not change stored entries here; backups are read-only snapshots.
     function exportLibraryBackup() {
         var data={type:'my-little-library-backup',version:1,exportedAt:new Date().toISOString(),entries:{}};
-        for(var i=0;i<localStorage.length;i++){var k=localStorage.key(i);if(k==='books'||k==='reading_session'||k==='reading_users'||k.startsWith('reading_'))data.entries[k]=localStorage.getItem(k);}
-        var blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');
+        for(var i=0;i<localStorage.length;i++) {
+            var k=localStorage.key(i);
+            if(k==='books'||k==='reading_session'||k==='reading_users'||k.startsWith('reading_')) data.entries[k]=localStorage.getItem(k);
+        }
+        var currentKey=getBookKey(currentUser);
+        if(Array.isArray(books)) data.entries[currentKey]=JSON.stringify(books);
+        var payload=JSON.stringify(data,null,2);
+        // Verify the exported shelf is exactly the same as what the dashboard uses.
+        if(JSON.parse(data.entries[currentKey]).length!==books.length) {
+            alert('Backup verification failed. Your data has not been changed.');return;
+        }
+        var blob=new Blob([payload],{type:'application/json'}),url=URL.createObjectURL(blob),a=document.createElement('a');
         a.href=url;a.download='my-little-library-backup-'+new Date().toISOString().slice(0,10)+'.json';document.body.append(a);a.click();a.remove();setTimeout(function(){URL.revokeObjectURL(url)},1000);
+        showToast('Backup exported with all '+books.length+' currently displayed books.','success');
     }
     async function importLibraryBackup(event) {
         var file=event.target.files[0];event.target.value='';if(!file)return;
         try {
             var data=JSON.parse(await file.text());
             if(!data || data.type!=='my-little-library-backup'|| !data.entries || typeof data.entries!=='object')throw Error('Not a library backup');
-            if(!confirm('Import this backup? Existing books and wishlist items will be merged, not erased.'))return;
+            if(!confirm('Import this backup? Existing books and wishlist items will be merged, not erased. Export your current shelf first.'))return;
+            var previousBooks=books.slice();
+            var errors=[];
             Object.keys(data.entries).forEach(function(key){
                 if(!(key==='books'||key==='reading_session'||key==='reading_users'||key.startsWith('reading_')))return;
                 var incoming=data.entries[key];if(typeof incoming!=='string')return;
                 if(key.startsWith('reading_books_')||key.startsWith('reading_wishlist_')||key==='books'){
                     var a=JSON.parse(localStorage.getItem(key)||'[]'),b=JSON.parse(incoming);
-                    if(Array.isArray(a)&&Array.isArray(b)) {var seen=new Set(a.map(function(x){return String(x.id)}));b.forEach(function(x){if(x&&typeof x==='object'&&!seen.has(String(x.id))){a.push(x);seen.add(String(x.id));}});localStorage.setItem(key,JSON.stringify(a));}
-                }else if(localStorage.getItem(key)===null){localStorage.setItem(key,incoming);}
+                    if(Array.isArray(a)&&Array.isArray(b)) {var seen=new Set(a.map(function(x){return String(x.id)}));b.forEach(function(x){if(x&&typeof x==='object'&&!seen.has(String(x.id))){a.push(x);seen.add(String(x.id));}});try {localStorage.setItem(key,JSON.stringify(a));} catch(storageError) {errors.push(key);} }
+                }else if(localStorage.getItem(key)===null){try{localStorage.setItem(key,incoming);}catch(storageError){errors.push(key);}}
             });
             // Keep current session and user; load books from currently selected user.
-            var k=getBookKey(currentUser); books=JSON.parse(localStorage.getItem(k)||'[]');if(!Array.isArray(books))books=[];
-            renderBooks();updateStats();renderWishlist();showToast('Backup imported. Your books were merged.','success');
+            var k=getBookKey(currentUser);
+            var restored=JSON.parse(localStorage.getItem(k)||'[]');if(!Array.isArray(restored))restored=[];
+            // Never discard books already visible but not yet persisted.
+            var seen=new Set(restored.map(function(x){return String(x.id)}));
+            previousBooks.forEach(function(x){if(x&&!seen.has(String(x.id))){restored.push(x);seen.add(String(x.id));}});
+            books=restored;
+            var persisted=cacheLocal();
+            renderBooks();updateStats();renderWishlist();
+            if(errors.length||!persisted) alert('Some data could not be saved because browser storage is full. Your currently visible books are still in memory. EXPORT A BACKUP NOW before refreshing.');
+            else showToast('Backup merged successfully. '+books.length+' books on this shelf.','success');
         }catch(e){showToast('Could not import this file. Use an exported library JSON backup.','error');}
     }
 
